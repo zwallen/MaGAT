@@ -401,7 +401,7 @@ fi
 
 # -l
 if [[ ! -z "$TAXA_LVL" ]]; then
-  ARG_LIST="Kingdom, Phylum, Class, Order, Family, Genus, Species"
+  ARG_LIST="Kingdom Phylum Class Order Family Genus Species"
   if echo $ARG_LIST | grep -q "$TAXA_LVL"; then
     :
   else
@@ -412,11 +412,11 @@ fi
 
 # -t
 if [[ ! -z "$TRANSF" ]]; then
-  ARG_LIST="CLR, log_TSS, log_CSS, DESeq2, TMM, voom, none"
+  ARG_LIST="CLR log_TSS none"
   if echo $ARG_LIST | grep -q "$TRANSF"; then
     :
   else
-    echo "ERROR: Invalid argument given to -t, please specify one of: CLR, log_TSS, log_CSS, DESeq2, TMM, voom, none"
+    echo "ERROR: Invalid argument given to -t, please specify one of: CLR, log_TSS, none"
     exit 1
   fi
 fi
@@ -513,7 +513,7 @@ fi
 
 # -s
 if [[ ! -z "$SNP_MOD" ]]; then
-  ARG_LIST="ADD, DOM, REC"
+  ARG_LIST="ADD DOM REC"
   if echo $ARG_LIST | grep -q "$SNP_MOD"; then
     :
   else
@@ -728,58 +728,12 @@ if [[ "$TRANSF" = "CLR" ]]; then
 elif [[ "$TRANSF" = "log_TSS" ]]; then
   echo "- Transformation for feature count data: log TSS"
   echo " "
-  echo ""
-  echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "log.trans <- function(x) {" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "  y <- replace(x, x == 0, min(x[x>0]) / 2)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "  return(log(y))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps.t <- transform_sample_counts(ps.t, function(x){x/sum(x)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-elif [[ "$TRANSF" = "log_CSS" ]]; then
-  echo "- Transformation for feature count data: log CSS"
-  echo " "
-  echo "suppressMessages(library(metagenomeSeq))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!taxa_are_rows(ps.t)){ps.t <- t(ps.t)}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "mre <- newMRexperiment(data.frame(otu_table(ps.t), check.names=F))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "mre <- cumNorm(mre)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "normCounts <- data.frame(MRcounts(mre, norm=T), check.names=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- phyloseq(otu_table(normCounts, taxa_are_rows=T), tax_table(ps.t), sample_data(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps.t)){ps.t <- t(ps.t)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-elif [[ "$TRANSF" = "DESeq2" ]]; then
-  echo "- Transformation for feature count data: DESeq2"
-  echo " "
-  echo "suppressMessages(library(DESeq2))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!taxa_are_rows(ps)){ps <- t(ps)}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dds <- DESeqDataSetFromMatrix(data.frame(otu_table(ps), check.names=F), data.frame(sample_data(ps), check.names=F), design=~1)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dds <- estimateSizeFactors(dds, type='poscounts')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "vsd <- varianceStabilizingTransformation(dds, blind=F, fitType='parametric')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "normCounts <- data.frame(assay(vsd), check.names=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- phyloseq(otu_table(normCounts, taxa_are_rows=T), tax_table(ps), sample_data(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps)){ps <- t(ps)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps.t)){ps.t <- t(ps.t)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-elif [[ "$TRANSF" = "TMM" ]]; then
-  echo "- Transformation for feature count data: TMM"
-  echo " "
-  echo "suppressMessages(library(edgeR))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!taxa_are_rows(ps)){ps <- t(ps)}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dge <- DGEList(counts=t(as(otu_table(ps), 'matrix')), genes=tax_table(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dge <- calcNormFactors(dge)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "normCounts <- cpm(dge, log=T)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- phyloseq(otu_table(normCounts, taxa_are_rows=T), tax_table(ps), sample_data(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps)){ps <- t(ps)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps.t)){ps.t <- t(ps.t)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-elif [[ "$TRANSF" = "voom" ]]; then
-  echo "- Transformation for feature count data: voom"
-  echo " "
-  echo "suppressMessages(library(limma))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!taxa_are_rows(ps)){ps <- t(ps)}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dge <- DGEList(counts=t(as(otu_table(ps), 'matrix')), genes=tax_table(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "dge.voom <- voom(dge)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'normCounts <- dge.voom$E' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- phyloseq(otu_table(normCounts, taxa_are_rows=T), tax_table(ps), sample_data(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps)){ps <- t(ps)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (taxa_are_rows(ps.t)){ps.t <- t(ps.t)}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "otu_table(ps.t) <- apply(otu_table(ps.t), 2, log.trans)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 elif [[ "$TRANSF" = "none" ]]; then
   echo "- Transformation for feature count data: none"
@@ -788,18 +742,19 @@ elif [[ "$TRANSF" = "none" ]]; then
 fi
 
 # Add syntax for subsetting phyloseq object for specific feature specified by user
-if [[ ! -z "$TAXA_LVL" ]] && [[ ! -z "$FEAT" ]]; then
+if [[ ! -z "$FEAT" ]]; then
   echo "- Subsetting microbiome data for specific feature: $FEAT"
   echo " "
   echo "# Subset microbiome data for specified feature: $FEAT" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "target.feat <- strsplit('${FEAT}', ',')[[1]]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- subset_taxa(ps.t, ${TAXA_LVL} %in% target.feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Subsetting data for requested feature ${FEAT}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-else
-  echo "- No specific feature requested for analysis, no subsetting of microbiome data will be performed"
-  echo " "
+  if [[ ! -z "$TAXA_LVL" ]]; then
+    echo "ps.t <- subset_taxa(ps.t, ${TAXA_LVL} %in% target.feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  else
+    echo "ps.t <- prune_taxa(target.feat, ps.t)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  fi
+    echo "cat('\n','Subsetted data for requested feature ${FEAT}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
 
 # Add syntax for filtering microbiome count data
@@ -1856,7 +1811,9 @@ if [[ ! -z $REM_COV ]]; then
     for pheno in $PHENOS
     do
       FILE=$(ls ${OUT_DIR}/*${pheno}.glm*)
-      cat $FILE | awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" 'NR==1 || $7==SNP_MOD"x"IXN' > ${FILE}.mod
+      cat $FILE | \
+      awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" \
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD"x"IXN)' > ${FILE}.mod
       mv ${FILE}.mod $FILE
     done
   elif [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
@@ -1866,7 +1823,9 @@ if [[ ! -z $REM_COV ]]; then
     for pheno in $PHENOS
     do
       FILE=$(ls ${OUT_DIR}/*${pheno}.glm*)
-      cat $FILE | awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" 'NR==1 || $7==SNP_MOD || $7==SNP_MOD"x"IXN || $7=="USER_2DF"' > ${FILE}.mod
+      cat $FILE | \
+      awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" \
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD || $(f["TEST"])==SNP_MOD"x"IXN || $(f["TEST"])=="USER_2DF")' > ${FILE}.mod
       mv ${FILE}.mod $FILE
     done
   else
@@ -1876,13 +1835,15 @@ if [[ ! -z $REM_COV ]]; then
     for pheno in $PHENOS
     do
       FILE=$(ls ${OUT_DIR}/*${pheno}.glm*)
-      cat $FILE | awk -v SNP_MOD="$SNP_MOD" 'NR==1 || $7==SNP_MOD' > ${FILE}.mod
+      cat $FILE | \
+      awk -v SNP_MOD="$SNP_MOD" \
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD)' > ${FILE}.mod
       mv ${FILE}.mod $FILE
     done
   fi
 else
   echo " "
-  echo "No subsetting of PLINK result files has been requested, will keep results for all variables included in the model."
+  echo "Removal of covariates from result file(s) not requested, results for all variables will be kept."
   echo " "
 fi
 
