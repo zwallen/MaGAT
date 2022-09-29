@@ -607,7 +607,7 @@ else
   echo " "
   echo "# Collapse phyloseq object to ${TAXA_LVL} level" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps <- tax_glom(ps, taxrank = '${TAXA_LVL}', NArm=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Collapsing phyloseq object to ${TAXA_LVL} level:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Summary after collapsing phyloseq object to ${TAXA_LVL} level:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
@@ -748,6 +748,8 @@ if [[ ! -z "$KEEP_SAMPS" ]]; then
   echo "# Extract specific samples to use in pre-processing and analysis" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Summary after removing samples not found int ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
 
@@ -796,7 +798,7 @@ elif [[ ! -z "$FILTER" ]]; then
   echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 else
@@ -806,7 +808,7 @@ else
   echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
@@ -820,7 +822,7 @@ if [[ ! -z "$TAXA_LVL" ]]; then
     echo " "
     echo "# Remove unclassifed taxa at the ${TAXA_LVL}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo "ps.t <- subset_taxa(ps.t, "'!'"is.na(${TAXA_LVL}))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "cat('\n','Removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "cat('\n','Summary after removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   else
@@ -833,52 +835,31 @@ fi
 if [[ ! -z "$GENOS" ]]; then
   echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "fam.file <- read.table('${GENOS}.fam', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file.filt <- fam.file[fam.file[,2] %in% rownames(feat.df),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df.filt <- feat.df[rownames(feat.df) %in% fam.file[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (nrow(feat.df.filt) == 0){ stop('No overlapping samples found between microbiome and genotype data. Are sample names of phyloseq object and IIDs of genotype data concordant?')}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples that overlap between phyloseq and genotype data and will be included in phenotype/covariate files:', nrow(feat.df.filt), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Order microbiome and genotype samples the same so the correct FID and IIDs are added to the microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df.filt <- feat.df.filt[order(rownames(feat.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 elif [[ ! -z "$DOSAGE" ]]; then
   echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "fam.file <- read.table('${FAM_FILE}', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file.filt <- fam.file[fam.file[,2] %in% rownames(feat.df),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df.filt <- feat.df[rownames(feat.df) %in% fam.file[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "if (nrow(feat.df.filt) == 0){ stop('No overlapping samples found between microbiome and genotype data. Are sample names of phyloseq object and IIDs of genotype data concordant?')}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Number of samples that overlap between phyloseq and genotype data and will be included in phenotype/covariate files:', nrow(feat.df.filt), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Order microbiome and genotype samples the same so the correct FID and IIDs are added to the microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "feat.df.filt <- feat.df.filt[order(rownames(feat.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
+echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "fam.file.filt <- fam.file[fam.file[,2] %in% rownames(feat.df),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "feat.df.filt <- feat.df[rownames(feat.df) %in% fam.file[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "if (nrow(feat.df.filt) == 0){ stop('No overlapping samples found between microbiome and genotype data. Are sample names of phyloseq object and IIDs of genotype data concordant?')}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "cat('\n','Number of samples that overlap between phyloseq and genotype data and will be included in phenotype/covariate files:', nrow(feat.df.filt), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Order microbiome and genotype samples the same so the correct FID and IIDs are added to the microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "feat.df.filt <- feat.df.filt[order(rownames(feat.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 
 # Add syntax to create covariate file with requested variables
 if [[ -z "$VARS" ]]; then
