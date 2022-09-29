@@ -596,6 +596,9 @@ echo "suppressMessages(library(phyloseq))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Da
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "# Read in phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "ps <- readRDS('${PHYLO_OBJ}')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "if (taxa_are_rows(ps)){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "    ps <- phyloseq(t(otu_table(ps)), sample_data(ps), tax_table(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "cat('\n','Summary of input phyloseq object:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -750,6 +753,7 @@ if [[ ! -z "$KEEP_SAMPS" ]]; then
   echo "# Extract specific samples to use in pre-processing and analysis" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps <- filter_taxa(prune_samples(samp.list[,1], ps), function(x){sum(x>0)>0}, TRUE)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "cat('\n','Summary after removing samples not found int ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -767,8 +771,8 @@ elif [[ "$TRANSF" = "log_TSS" ]]; then
   echo "  y <- replace(x, x == 0, min(x[x>0]) / 2)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "  return(log(y))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- transform_sample_counts(ps.t, function(x){x/sum(x)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "otu_table(ps.t) <- apply(otu_table(ps.t), 2, log.trans)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps.t <- transform_sample_counts(ps, function(x){x/sum(x)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "otu_table(ps.t) <- otu_table(apply(otu_table(ps.t), 2, log.trans), taxa_are_rows=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 elif [[ "$TRANSF" = "none" ]]; then
   echo "ps.t <- ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
