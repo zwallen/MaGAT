@@ -573,12 +573,12 @@ fi
 # If directory with VCF files given, make temporary .fam file to use for phenotype and covariate file creation
 if [[ ! -z "$DOSAGE" ]]; then
   echo " "
-  echo "*** VCF files given instead of PLINK binary files, making temporary .fam file from first VCF file in supplied directory to use in downstream processes ***"
+  echo "*** VCF files given instead of PLINK binary files, making temporary .fam file from smallest sized VCF file in supplied directory to use in downstream processes ***"
   echo " "
   if ls $OUT_DIR | grep -q "tEmPoRaRy"; then
     rm ${OUT_DIR}/*tEmPoRaRy*
   fi
-  file=$(ls -l ${DOSAGE}/*vcf* | awk 'NR == 1{print $NF}')
+  file=$(ls -l ${DOSAGE}/*vcf* | sort -g -k5,5 | awk 'NR == 1{print $NF}')
   plink2 --vcf $file --id-delim --make-just-fam --out ${OUT_DIR}/tEmPoRaRy.plink
   FAM_FILE="${OUT_DIR}/tEmPoRaRy.plink.fam"
 fi
