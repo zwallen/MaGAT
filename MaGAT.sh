@@ -740,6 +740,7 @@ if [[ ! -z "$TAXA_LVL" ]]; then
     echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  fi
 fi
 
 # Add syntax to extract certain samples if requested
