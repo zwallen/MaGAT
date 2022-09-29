@@ -876,7 +876,7 @@ else
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "# Extract desired variables from phyloseq object sample data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "samp.df <- data.frame(sample_data(ps.t)[,vars])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Additional variables requested were found in phyloseq object sample data, and will be included in covariate file:', colnames(samp.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Additional variables requested were found in phyloseq object sample data and will be included in covariate file:', colnames(samp.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "samp.df.filt <- samp.df[rownames(samp.df) %in% fam.file.filt[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -890,7 +890,7 @@ else
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "# Dummy-code any categorical variables so PLINK works correctly" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "for (i in 3:ncol(covar.file)){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo '  if (!is.numeric(covar.file[,i])){' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo '  if (!is.numeric(covar.file[,i]) | length(table(covar.file[,i]))<=2){' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    cat('\n','WARNING: While creating covariate file for PLINK, variable [',colnames(covar.file)[i],'] was detected as being categorical. It will be dummy-coded to 2 and 1 for analysis. Please check covariate_file.txt to ensure this was done correctly.','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    levels <- names(table(covar.file[,i]))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    if (length(levels) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
