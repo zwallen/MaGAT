@@ -894,8 +894,8 @@ else
   echo "    cat('\n','WARNING: While creating covariate file for PLINK, variable [',colnames(covar.file)[i],'] was detected as being categorical. It will be dummy-coded to 2 and 1 for analysis. Please check covariate_file.txt to ensure this was done correctly.','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    levels <- names(table(covar.file[,i]))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    if (length(levels) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      covar.file[,i] <- gsub(levels[1], '1', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      covar.file[,i] <- gsub(levels[2], '2', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "      covar.file[,i] <- gsub(levels[1], '2', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "      covar.file[,i] <- gsub(levels[2], '1', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    }else if (length(levels) > 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "      stop('Variable [',colnames(covar.file)[i],'] was detected as a categorical variable with >2 levels. Automatic dummy-coding of categorical variables with >2 levels is unsupported at this time. Please recode the variables to numeric values manually and try again.')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "    }else if (length(levels) < 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
