@@ -71,8 +71,7 @@ set -e
 #           as they are supplied to the script.                    #
 #     -t    (Optional) The desired transformation/normalization to #
 #           perform on the feature count data. One of:             #
-#           CLR (default), log_TSS, log_CSS, DESeq2, TMM, voom, or #
-#           none.                                                  #
+#           CLR (default), log_TSS, or none.                       #
 #     -p    (Optional) Pick specific features that will be in the  #
 #           analysis. Associations will only be performed for the  #
 #           specified features. Must be valid feature names that   #
@@ -91,6 +90,11 @@ set -e
 #           this flag out will keep them in. Only applicable when  #
 #           a taxonomic level has been designated for -l, will be  #
 #           ignored otherwise.                                     #
+#     -k    (Optional) File listing sample names/IIDs to be keep in#
+#           the analysis. Samples not included in this list will be#
+#           excluded from all pre-processing steps and analysis.   #
+#           Each sample name/IID should be listed one ID per line. #
+#           Default is to include all samples.                     #
 #     -v    (Optional) Column names of additional variables to be  #
 #           included in the analysis. Must be present in the       #
 #           sample_data() slot of the phyloseq object. Enter as a  #
@@ -142,7 +146,7 @@ set -e
 #     -r    (Optional) Remove results for covariates. By default,  #
 #           covariates are not removed from PLINK output files, but#
 #           applying this flag will remove them from outputs.      #
-#     -k    (Optional) Keep R scripts generated during pre-        #
+#     -R    (Optional) Keep R scripts generated during pre-        #
 #           processing of data and plot creation. Might be useful  #
 #           to keep for record, or for debugging. If this flag is  #
 #           absent, all R scripts are removed at end of analysis.  #
@@ -157,7 +161,7 @@ echo "####################################################################"
 echo " "
 
 # Argument parsing
-while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
+while getopts ":hi:g:d:o:l:t:p:f:uk:v:e:c:b:a:q:s:x:jprR" opt; do
   case $opt in
     h)
     echo " Description: This is a program that wraps different R packages   "
@@ -225,8 +229,7 @@ while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
     echo "           as they are supplied to the script.                    "
     echo "     -t    (Optional) The desired transformation/normalization to "
     echo "           perform on the feature count data. One of:             "
-    echo "           CLR (default), log_TSS, log_CSS, DESeq2, TMM, voom, or "
-    echo "           none.                                                  "
+    echo "           CLR (default), log_TSS, or none.                       "
     echo "     -p    (Optional) Pick specific features that will be in the  "
     echo "           analysis. Associations will only be performed for the  "
     echo "           specified features. Must be valid feature names that   "
@@ -245,6 +248,11 @@ while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
     echo "           this flag out will keep them in. Only applicable when  "
     echo "           a taxonomic level has been designated for -l, will be  "
     echo "           ignored otherwise.                                     "
+    echo "     -k    (Optional) File listing sample names/IIDs to be keep in"
+    echo "           the analysis. Samples not included in this list will be"
+    echo "           excluded from all pre-processing steps and analysis.   "
+    echo "           Each sample name/IID should be listed one ID per line. "
+    echo "           Default is to include all samples.                     "
     echo "     -v    (Optional) Column names of additional variables to be  "
     echo "           included in the analysis. Must be present in the       "
     echo "           sample_data() slot of the phyloseq object. Enter as a  "
@@ -296,7 +304,7 @@ while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
     echo "     -r    (Optional) Remove results for covariates. By default,  "
     echo "           covariates are not removed from PLINK output files, but"
     echo "           applying this flag will remove them from outputs.      "
-    echo "     -k    (Optional) Keep R scripts generated during pre-        "
+    echo "     -R    (Optional) Keep R scripts generated during pre-        "
     echo "           processing of data and plot creation. Might be useful  "
     echo "           to keep for record, or for debugging. If this flag is  "
     echo "           absent, all R scripts are removed at end of analysis.  "
@@ -321,6 +329,8 @@ while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
     ;;
     u) UNCLASS=1
     ;;
+    k) KEEP_SAMPS="$OPTARG"
+    ;;
     v) VARS="$OPTARG"
     ;;
     e) SWAP="$OPTARG"
@@ -341,7 +351,7 @@ while getopts ":hi:g:d:o:l:t:p:f:uv:e:c:b:a:q:s:x:jprk" opt; do
     ;;
     r) REM_COV=1
     ;;
-    k) KEEP_R=1
+    R) KEEP_R=1
     ;;
     \?) echo "Invalid option: $OPTARG" 1>&2
         exit 1
@@ -441,6 +451,20 @@ if [[ ! -z "$FILTER" ]]; then
     echo "ERROR: Invalid value given to -f, should be between 0 and 1"
     exit 1
   fi
+fi
+
+# -u
+# Not an easy way to double-check this so let phyloseq give the error if its invalid
+
+# -k
+if [[ ! -f "$KEEP_SAMPS" ]]; then
+  echo "ERROR: Argument -k should be a file, please supply an file with sample names/IIDs"
+  exit 1
+fi
+if [[ $(awk '{print NF}' $KEEP_SAMPS | uniq | wc -l) -gt 1 ]] || \
+   [[ $(awk '{print NF}' $KEEP_SAMPS | uniq) -gt 1 ]]; then
+  echo "ERROR: File given to -k should only have one column with one sample name/IID per row"
+  exit 1
 fi
 
 # -v
@@ -718,16 +742,22 @@ if [[ ! -z "$TAXA_LVL" ]]; then
     echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
 
+# Add syntax to extract certain samples if requested
+if [[ ! -z "$KEEP_SAMPS" ]]; then
+  echo "# Extract specific samples to use in pre-processing and analysis" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+fi
+
 # Add syntax for feature data transformation
-echo "# Perform ${TRANSF} normalization/transformation on feature count data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "- Transformation for feature count data: ${TRANSF}"
+echo " "
+echo "# Perform normalization/transformation on feature count data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 if [[ "$TRANSF" = "CLR" ]]; then
-  echo "- Transformation for feature count data: CLR"
-  echo " "
   echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)-mean(log(x+1))})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 elif [[ "$TRANSF" = "log_TSS" ]]; then
-  echo "- Transformation for feature count data: log TSS"
-  echo " "
   echo "log.trans <- function(x) {" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "  y <- replace(x, x == 0, min(x[x>0]) / 2)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "  return(log(y))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -736,9 +766,8 @@ elif [[ "$TRANSF" = "log_TSS" ]]; then
   echo "otu_table(ps.t) <- apply(otu_table(ps.t), 2, log.trans)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 elif [[ "$TRANSF" = "none" ]]; then
-  echo "- Transformation for feature count data: none"
-  echo " "
   echo "ps.t <- ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
 
 # Add syntax for subsetting phyloseq object for specific feature specified by user
@@ -758,12 +787,19 @@ if [[ ! -z "$FEAT" ]]; then
 fi
 
 # Add syntax for filtering microbiome count data
-if [[ ! -z "$TAXA_LVL" ]] && [[ ! -z "$FEAT" ]]; then
+if [[ ! -z "$FEAT" ]]; then
   :
-elif [[ -z "$FILTER" ]]; then
-  echo "- No filtering of features specified, no filtering of microbiome data will be performed"
+elif [[ ! -z "$FILTER" ]]; then
+  echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
   echo " "
+  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 else
+  FILTER=0.1
   echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
   echo " "
   echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -775,19 +811,21 @@ else
 fi
 
 # Add syntax for removing unclassified taxa
-if [[ ! -z "$TAXA_LVL" ]] && [[ ! -z "$FEAT" ]]; then
-  :
-elif [[ ! -z "$TAXA_LVL" ]] && [[ ! -z "$UNCLASS" ]]; then
-  echo "- Removing unclassified features at the $TAXA_LVL level"
-  echo " "
-  echo "# Remove unclassifed taxa at the ${TAXA_LVL}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- subset_taxa(ps.t, "'!'"is.na(${TAXA_LVL}))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-else
-  echo "- Keeping unclassified features at the $TAXA_LVL level in the analysis"
-  echo " "
+if [[ ! -z "$TAXA_LVL" ]]; then
+  if [[ ! -z "$FEAT" ]]; then
+    :
+  elif [[ ! -z "$UNCLASS" ]]; then
+    echo "- Removing unclassified features at the $TAXA_LVL level"
+    echo " "
+    echo "# Remove unclassifed taxa at the ${TAXA_LVL}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "ps.t <- subset_taxa(ps.t, "'!'"is.na(${TAXA_LVL}))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "cat('\n','Removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  else
+    echo "- Keeping unclassified features at the $TAXA_LVL level in the analysis"
+    echo " "
+  fi
 fi
 
 # Add syntax to create microbiome phenotype file for input to PLINK
@@ -891,7 +929,7 @@ echo "cat('\n', 'Pre-processing of phyloseq data, and creation of phenotype/cova
 # Run Pre-Process_Phyloseq_Data.R script to perform the data pre-processing and generation of phenotype and covariate file for PLINK
 echo "*** Performing phyloseq data pre-processing ***"
 Rscript ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-
+exit 0
 # If parameter given to make a covariate as phenotype, create new phenotype/covariate files with covariate as phenotype and add microbiome features as covariates
 if [[ ! -z "$SWAP" ]]; then
   echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='')" > ${OUT_DIR}/Swap_phenotype.R
