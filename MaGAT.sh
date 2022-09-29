@@ -81,6 +81,11 @@ set -e
 #           object was collapsed to. Provide feature names in a    #
 #           comma separated list with no spaces. Parameters -f and #
 #           -u will be ignored if this is specified.               #
+#     -k    (Optional) File listing sample names/IIDs to be keep in#
+#           the analysis. Samples not included in this list will be#
+#           excluded from all pre-processing steps and analysis.   #
+#           Each sample name/IID should be listed one ID per line. #
+#           Default is to include all samples.                     #
 #     -f    (Optional) The minimum proportion of samples a taxon   #
 #           must be detected in to be included in the analysis.    #
 #           Default is 0.1.                                        #
@@ -90,11 +95,6 @@ set -e
 #           this flag out will keep them in. Only applicable when  #
 #           a taxonomic level has been designated for -l, will be  #
 #           ignored otherwise.                                     #
-#     -k    (Optional) File listing sample names/IIDs to be keep in#
-#           the analysis. Samples not included in this list will be#
-#           excluded from all pre-processing steps and analysis.   #
-#           Each sample name/IID should be listed one ID per line. #
-#           Default is to include all samples.                     #
 #     -v    (Optional) Column names of additional variables to be  #
 #           included in the analysis. Must be present in the       #
 #           sample_data() slot of the phyloseq object. Enter as a  #
@@ -161,7 +161,7 @@ echo "####################################################################"
 echo " "
 
 # Argument parsing
-while getopts ":hi:g:d:o:l:t:p:f:uk:v:e:c:b:a:q:s:x:jprR" opt; do
+while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
   case $opt in
     h)
     echo " Description: This is a program that wraps different R packages   "
@@ -239,6 +239,11 @@ while getopts ":hi:g:d:o:l:t:p:f:uk:v:e:c:b:a:q:s:x:jprR" opt; do
     echo "           object was collapsed to. Provide feature names in a    "
     echo "           comma separated list with no spaces. Parameters -f and "
     echo "           -u will be ignored if this is specified.               "
+    echo "     -k    (Optional) File listing sample names/IIDs to be keep in"
+    echo "           the analysis. Samples not included in this list will be"
+    echo "           excluded from all pre-processing steps and analysis.   "
+    echo "           Each sample name/IID should be listed one ID per line. "
+    echo "           Default is to include all samples.                     "
     echo "     -f    (Optional) The minimum proportion of samples a taxon   "
     echo "           must be detected in to be included in the analysis.    "
     echo "           Default is 0.1.                                        "
@@ -248,11 +253,6 @@ while getopts ":hi:g:d:o:l:t:p:f:uk:v:e:c:b:a:q:s:x:jprR" opt; do
     echo "           this flag out will keep them in. Only applicable when  "
     echo "           a taxonomic level has been designated for -l, will be  "
     echo "           ignored otherwise.                                     "
-    echo "     -k    (Optional) File listing sample names/IIDs to be keep in"
-    echo "           the analysis. Samples not included in this list will be"
-    echo "           excluded from all pre-processing steps and analysis.   "
-    echo "           Each sample name/IID should be listed one ID per line. "
-    echo "           Default is to include all samples.                     "
     echo "     -v    (Optional) Column names of additional variables to be  "
     echo "           included in the analysis. Must be present in the       "
     echo "           sample_data() slot of the phyloseq object. Enter as a  "
@@ -325,11 +325,11 @@ while getopts ":hi:g:d:o:l:t:p:f:uk:v:e:c:b:a:q:s:x:jprR" opt; do
     ;;
     p) FEAT="$OPTARG"
     ;;
+    k) KEEP_SAMPS="$OPTARG"
+    ;;
     f) FILTER="$OPTARG"
     ;;
     u) UNCLASS=1
-    ;;
-    k) KEEP_SAMPS="$OPTARG"
     ;;
     v) VARS="$OPTARG"
     ;;
@@ -437,6 +437,19 @@ fi
 # -p
 # Not an easy way to double-check this so let phyloseq give the error if its invalid
 
+# -k
+if [[ ! -z "$KEEP_SAMPS" ]]; then
+  if [[ ! -f "$KEEP_SAMPS" ]]; then
+    echo "ERROR: Argument -k should be a file, please supply an file with sample names/IIDs"
+    exit 1
+  fi
+  if [[ $(awk '{print NF}' $KEEP_SAMPS | uniq | wc -l) -gt 1 ]] || \
+     [[ $(awk '{print NF}' $KEEP_SAMPS | uniq) -gt 1 ]]; then
+    echo "ERROR: File given to -k should only have one column with one sample name/IID per row"
+    exit 1
+  fi
+fi
+
 # -f
 if [[ ! -z "$FILTER" ]]; then
   if [[ $(echo "$FILTER <= 1" | bc) -eq 1 ]]; then
@@ -455,19 +468,6 @@ fi
 
 # -u
 # Not an easy way to double-check this so let phyloseq give the error if its invalid
-
-# -k
-if [[ ! -z "$KEEP_SAMPS" ]]; then
-  if [[ ! -f "$KEEP_SAMPS" ]]; then
-    echo "ERROR: Argument -k should be a file, please supply an file with sample names/IIDs"
-    exit 1
-  fi
-  if [[ $(awk '{print NF}' $KEEP_SAMPS | uniq | wc -l) -gt 1 ]] || \
-     [[ $(awk '{print NF}' $KEEP_SAMPS | uniq) -gt 1 ]]; then
-    echo "ERROR: File given to -k should only have one column with one sample name/IID per row"
-    exit 1
-  fi
-fi
 
 # -v
 if [[ ! -z "$VARS" ]] && [[ $(echo $VARS | awk '{print NF}') > 1 ]]; then
