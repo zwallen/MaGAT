@@ -457,14 +457,16 @@ fi
 # Not an easy way to double-check this so let phyloseq give the error if its invalid
 
 # -k
-if [[ ! -f "$KEEP_SAMPS" ]]; then
-  echo "ERROR: Argument -k should be a file, please supply an file with sample names/IIDs"
-  exit 1
-fi
-if [[ $(awk '{print NF}' $KEEP_SAMPS | uniq | wc -l) -gt 1 ]] || \
-   [[ $(awk '{print NF}' $KEEP_SAMPS | uniq) -gt 1 ]]; then
-  echo "ERROR: File given to -k should only have one column with one sample name/IID per row"
-  exit 1
+if [[ ! -z "$KEEP_SAMPS" ]]; then
+  if [[ ! -f "$KEEP_SAMPS" ]]; then
+    echo "ERROR: Argument -k should be a file, please supply an file with sample names/IIDs"
+    exit 1
+  fi
+  if [[ $(awk '{print NF}' $KEEP_SAMPS | uniq | wc -l) -gt 1 ]] || \
+     [[ $(awk '{print NF}' $KEEP_SAMPS | uniq) -gt 1 ]]; then
+    echo "ERROR: File given to -k should only have one column with one sample name/IID per row"
+    exit 1
+  fi
 fi
 
 # -v
