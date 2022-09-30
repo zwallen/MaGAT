@@ -1169,6 +1169,9 @@ if [[ ! -z $SWAP ]]; then
         quant_covars=$(echo "$quant_covars $i")
       fi
     done
+    echo " - Following variables were detected as quantitative and will be standardized in analysis:"
+    echo "  $quant_covars"
+    echo " "
 
     # Build PLINK command to run
       echo "plink2 \\" > ${OUT_DIR}/Run_PLINK.sh
