@@ -596,9 +596,12 @@ echo "suppressMessages(library(phyloseq))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Da
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "# Read in phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "ps <- readRDS('${PHYLO_OBJ}')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Make sure phyloseq object is in sample x feature orientation" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "if (taxa_are_rows(ps)){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "    ps <- phyloseq(t(otu_table(ps)), sample_data(ps), tax_table(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "cat('\n','Summary of input phyloseq object:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -848,7 +851,7 @@ fi
 echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "feat.df <- data.frame(otu_table(ps.t), check.names=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
@@ -863,7 +866,7 @@ echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/P
 echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt, check.names=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 
