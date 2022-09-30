@@ -1010,9 +1010,7 @@ if [[ -z "$SNP_MOD" ]]; then
 fi
 
 # Get PLINK parameter for SNP model
-if [[ "$SNP_MOD" = "ADD" ]]; then
-  SNP_PARAM="additive"
-elif [[ "$SNP_MOD" = "REC" ]]; then
+if [[ "$SNP_MOD" = "REC" ]]; then
   SNP_PARAM="recessive"
 elif [[ "$SNP_MOD" = "DOM" ]]; then
   SNP_PARAM="dominant"
