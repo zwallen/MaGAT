@@ -1147,7 +1147,7 @@ if [[ -z $SWAP ]]; then
   fi
 fi
 
-# Run GWAS for swapped phenotype
+# Run GWAS for swapped phenotype if applicable
 if [[ ! -z $SWAP ]]; then
   for cov_file in ${OUT_DIR}/*cov_file_tEmPoRaRy*
   do
