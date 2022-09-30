@@ -1078,46 +1078,46 @@ if [[ -z $SWAP ]]; then
   fi
   
   # Build PLINK command to run
-    echo "plink2 \\" > Run_PLINK.sh
+    echo "plink2 \\" > ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$GENOS" ]]; then
-    echo "--bfile $GENOS \\" >> Run_PLINK.sh
+    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--vcf $DOSE_FILE dosage=DS \\" >> Run_PLINK.sh
+    echo "--vcf $DOSE_FILE dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
-    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> Run_PLINK.sh
+    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$VARS" ]]; then
-    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> Run_PLINK.sh
-    echo "--variance-standardize $quant_covars \\" >> Run_PLINK.sh
+    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
-    echo "--chr $CHR \\" >> Run_PLINK.sh
+    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$RANGE" ]]; then
-    echo "--from-bp $START_BP \\" >> Run_PLINK.sh
-    echo "--to-bp $END_BP \\" >> Run_PLINK.sh
+    echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
-    echo "--maf $MAF \\" >> Run_PLINK.sh
+    echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-    echo "--extract-if-info $INFO \\" >> Run_PLINK.sh
+    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
-    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> Run_PLINK.sh
-    echo "--ci 0.95 \\" >> Run_PLINK.sh
+    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$IXN" ]]; then
-    echo "--parameters $PARAM \\" >> Run_PLINK.sh
+    echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
   if [[ ! -z "$JOINT_TEST" ]]; then
     echo "--tests $TESTS \\"
   fi
   if [[ ! -z "$GENOS" ]]; then
-    echo "--out ${OUT_DIR}/" >> Run_PLINK.sh
+    echo "--out ${OUT_DIR}/" >> ${OUT_DIR}/Run_PLINK.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--out ${OUT_DIR}/\${1}" >> Run_PLINK.sh
+    echo "--out ${OUT_DIR}/\${1}" >> ${OUT_DIR}/Run_PLINK.sh
   fi
-  chmod +x Run_PLINK.sh
+  chmod +x ${OUT_DIR}/Run_PLINK.sh
   
   # Run PLINK command
   if [[ ! -z "$GENOS" ]]; then
-    ./Run_PLINK.sh
+    ./${OUT_DIR}/Run_PLINK.sh
     for pheno in $PHENOS
     do
       assoc_file=$(ls ${OUT_DIR}/${pheno}.glm* | awk -F'/' '{print $NF}')
@@ -1132,7 +1132,7 @@ if [[ -z $SWAP ]]; then
       echo " "
       echo " "
       OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-      ./Run_PLINK.sh $OUT_FILE
+      ./${OUT_DIR}/Run_PLINK.sh $OUT_FILE
       rm ${OUT_DIR}/${OUT_FILE}.log
     done
     echo " "
@@ -1169,44 +1169,44 @@ if [[ ! -z $SWAP ]]; then
     done
 
     # Build PLINK command to run
-      echo "plink2 \\" > Run_PLINK.sh
+      echo "plink2 \\" > ${OUT_DIR}/Run_PLINK.sh
     if [[ ! -z "$GENOS" ]]; then
-      echo "--bfile $GENOS \\" >> Run_PLINK.sh
+      echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--vcf $DOSE_FILE dosage=DS \\" >> Run_PLINK.sh
+      echo "--vcf $DOSE_FILE dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
-      echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> Run_PLINK.sh
-      echo "--covar ${cov_file} \\" >> Run_PLINK.sh
-      echo "--variance-standardize $quant_covars \\" >> Run_PLINK.sh
-      echo "--chr $CHR \\" >> Run_PLINK.sh
+      echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK.sh
     if [[ ! -z "$RANGE" ]]; then
-      echo "--from-bp $START_BP \\" >> Run_PLINK.sh
-      echo "--to-bp $END_BP \\" >> Run_PLINK.sh
+      echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
-      echo "--maf $MAF \\" >> Run_PLINK.sh
+      echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK.sh
     if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-      echo "--extract-if-info $INFO \\" >> Run_PLINK.sh
+      echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
-      echo "--glm $SNP_PARAM $IXN_PARAM \\" >> Run_PLINK.sh
-      echo "--ci 0.95 \\" >> Run_PLINK.sh
+      echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK.sh
     if [[ ! -z "$IXN" ]]; then
-      echo "--parameters $PARAM \\" >> Run_PLINK.sh
+      echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
    if [[ ! -z "$JOINT_TEST" ]]; then
       echo "--tests $TESTS \\"
     fi
     if [[ ! -z "$GENOS" ]]; then
-      echo "--out ${OUT_DIR}/${feature}" >> Run_PLINK.sh
+      echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--out ${OUT_DIR}/\${1}.${feature}" >> Run_PLINK.sh
+      echo "--out ${OUT_DIR}/\${1}.${feature}" >> ${OUT_DIR}/Run_PLINK.sh
     fi
-    chmod +x Run_PLINK.sh
+    chmod +x ${OUT_DIR}/Run_PLINK.sh
   
     # Run PLINK command
     if [[ ! -z "$GENOS" ]]; then
-      ./Run_PLINK.sh
+      ./${OUT_DIR}/Run_PLINK.sh
       rm ${OUT_DIR}/${feature}.log
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
       assoc_file=$(ls ${OUT_DIR}/${pattern}* | awk -F'/' '{print $NF}')
@@ -1219,7 +1219,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        ./Run_PLINK.sh $OUT_FILE
+        ./${OUT_DIR}/Run_PLINK.sh $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
