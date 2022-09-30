@@ -920,7 +920,7 @@ Rscript ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 
 # If parameter given to make a covariate as phenotype, create new phenotype/covariate files with covariate as phenotype and add microbiome features as covariates
 if [[ ! -z "$SWAP" ]]; then
-  echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='', check.names=F)" > ${OUT_DIR}/Swap_phenotype.R
+  echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='')" > ${OUT_DIR}/Swap_phenotype.R
   echo "covar.file <- read.table('${OUT_DIR}/covariate_file.txt', header=T, stringsAsFactors=F, comment.char='')" >> ${OUT_DIR}/Swap_phenotype.R
   echo "if (!identical(pheno.file[,c('FID','IID')], covar.file[,c('FID','IID')])){ stop('ERROR: FID and IID in phenotype_file.txt and covariate_file.txt do not match, cannot make phenotype swap.')}" >> ${OUT_DIR}/Swap_phenotype.R
   echo "pheno.file.new <- cbind(pheno.file[,c('FID','IID')], covar.file[,'${SWAP}', drop=F])" >> ${OUT_DIR}/Swap_phenotype.R
