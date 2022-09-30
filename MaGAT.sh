@@ -962,15 +962,12 @@ fi
 echo "- Running analysis for chromosomes $CHR"
 echo " "
 
-# Apply base pair positions
+# Get start and end base pair positions
 if [[ ! -z "$RANGE" ]]; then
   echo "- Running analysis for base pair range $RANGE"
   echo " "
   START_BP=$(echo $RANGE | awk -F"-" '{print $1}')
   END_BP=$(echo $RANGE | awk -F"-" '{print $2}')
-else
-  START_BP=1       #### Apply these to include all SNPs
-  END_BP=500000000
 fi
 
 # Apply default MAF threshold option if one was not supplied
@@ -980,16 +977,15 @@ fi
 echo "- MAF threshold SNPs must pass to be included in analysis is $MAF"
 echo " "
 
-# Apply a dummy INFO key filtering that allows all SNPs to pass if one was not specified with -q
-if [[ -z "$INFO" ]]; then
-  INFO="AF >= 0" # NOTE: AF chosen because it is most likely to be included in the majority of VCF files, but if this becomes an issue can modify
-else
+# State what info field is being filtered by if given
+if [[ ! -z "$INFO" ]]; then
   echo "- SNPs with $INFO will be included in the analysis"
   echo " "
 fi
 
 # Create parameter input for interaction if specified
 if [[ ! -z "$IXN" ]]; then
+  IXN_PARAM="interaction"
   if [[ -z "$SWAP" ]]; then
     N_VAR=$(echo $(($(awk '{print NF}' ${OUT_DIR}/covariate_file.txt | sort -nu | tail -n 1)-1)))
     VAR_N=$(($(awk -v RS='\t' "/$IXN/{print NR}" ${OUT_DIR}/covariate_file.txt)-1))
@@ -1011,6 +1007,15 @@ fi
 # Apply default SNP model option if one was not supplied
 if [[ -z "$SNP_MOD" ]]; then
   SNP_MOD=ADD
+fi
+
+# Get PLINK parameter for SNP model
+if [[ "$SNP_MOD" = "ADD" ]]; then
+  SNP_PARAM="additive"
+elif [[ "$SNP_MOD" = "REC" ]]; then
+  SNP_PARAM="recessive"
+elif [[ "$SNP_MOD" = "DOM" ]]; then
+  SNP_PARAM="dominant"
 fi
 
 # Return the model to be run in PLINK
@@ -1054,9 +1059,11 @@ if [[ ! -z "$JOINT_TEST" ]]; then
   fi
 fi
 
-# Run GWAS in PLINK
+# Run GWAS with microbiome data as phenotype
 if [[ -z $SWAP ]]; then
-  if [[ ! -z $VARS ]]; then
+
+  # If variables supplied, grab names of quantitative one for standardization during analysis
+  if [[ ! -z "$VARS" ]]; then
     covars=$(sed -n 1p ${OUT_DIR}/covariate_file.txt | cut -f 3-)
     for i in $covars;
     do
@@ -1069,234 +1076,48 @@ if [[ -z $SWAP ]]; then
       fi
     done
   fi
+  
+  # Build PLINK command to run
+    echo "plink2 \\" > Run_PLINK.sh
   if [[ ! -z "$GENOS" ]]; then
-    if [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm dominant interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --out ${OUT_DIR}/
-    elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm recessive interaction \
-      --ci 0.95 \
-      --parameters $PARAM \
-      --tests $TESTS \
-      --out ${OUT_DIR}/
-    else
-      plink2 --bfile $GENOS \
-      --pheno ${OUT_DIR}/phenotype_file.txt \
-      --chr $CHR \
-      --from-bp $START_BP \
-      --to-bp $END_BP \
-      --maf $MAF \
-      --glm \
-      --ci 0.95 \
-      --out ${OUT_DIR}/
-    fi
+    echo "--bfile $GENOS \\" >> Run_PLINK.sh
+  fi
+  if [[ ! -z "$DOSAGE" ]]; then
+    echo "--vcf $DOSE_FILE dosage=DS \\" >> Run_PLINK.sh
+  fi
+    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> Run_PLINK.sh
+  if [[ ! -z "$VARS" ]]; then
+    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> Run_PLINK.sh
+    echo "--variance-standardize $quant_covars \\" >> Run_PLINK.sh
+  fi
+    echo "--chr $CHR \\" >> Run_PLINK.sh
+  if [[ ! -z "$RANGE" ]]; then
+    echo "--from-bp $START_BP \\" >> Run_PLINK.sh
+    echo "--to-bp $END_BP \\" >> Run_PLINK.sh
+  fi
+    echo "--maf $MAF \\" >> Run_PLINK.sh
+  if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
+    echo "--extract-if-info $INFO \\" >> Run_PLINK.sh
+  fi
+    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> Run_PLINK.sh
+    echo "--ci 0.95 \\" >> Run_PLINK.sh
+  if [[ ! -z "$IXN" ]]; then
+    echo "--parameters $PARAM \\" >> Run_PLINK.sh
+  fi
+  if [[ ! -z "$JOINT_TEST" ]]; then
+    echo "--tests $TESTS \\"
+  fi
+  if [[ ! -z "$GENOS" ]]; then
+    echo "--out ${OUT_DIR}/" >> Run_PLINK.sh
+  fi
+  if [[ ! -z "$DOSAGE" ]]; then
+    echo "--out ${OUT_DIR}/\${1}" >> Run_PLINK.sh
+  fi
+  chmod +x Run_PLINK.sh
+  
+  # Run PLINK command
+  if [[ ! -z "$GENOS" ]]; then
+    ./Run_PLINK.sh
     for pheno in $PHENOS
     do
       assoc_file=$(ls ${OUT_DIR}/${pheno}.glm* | awk -F'/' '{print $NF}')
@@ -1311,271 +1132,7 @@ if [[ -z $SWAP ]]; then
       echo " "
       echo " "
       OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-      if [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-      --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${OUT_FILE}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar ${OUT_DIR}/covariate_file.txt \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${OUT_FILE}
-      else
-        plink2 --vcf $DOSE_FILE dosage=DS \
-        --id-delim _ \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --extract-if-info $INFO \
-        --glm \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${OUT_FILE}
-      fi
+      ./Run_PLINK.sh $OUT_FILE
       rm ${OUT_DIR}/${OUT_FILE}.log
     done
     echo " "
@@ -1590,10 +1147,15 @@ if [[ -z $SWAP ]]; then
     done
   fi
 fi
+
+# Run GWAS for swapped phenotype
 if [[ ! -z $SWAP ]]; then
   for cov_file in ${OUT_DIR}/*cov_file_tEmPoRaRy*
   do
+    # Get feature name that is now a covariate
     feature=$(echo $cov_file | awk -F'_cov_file_tEmPoRaRy' '{print $1}' | awk -F'/' '{print $NF}')
+
+    # Grab names of quantitative one for standardization during analysis
     covars=$(sed -n 1p $cov_file | cut -f 3-)
     for i in $covars;
     do
@@ -1605,125 +1167,46 @@ if [[ ! -z $SWAP ]]; then
         quant_covars=$(echo "$quant_covars $i")
       fi
     done
+
+    # Build PLINK command to run
+      echo "plink2 \\" > Run_PLINK.sh
     if [[ ! -z "$GENOS" ]]; then
-      if [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm dominant \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm recessive \
-        --ci 0.95 \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm dominant interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --out ${OUT_DIR}/${feature}
-      elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-        plink2 --bfile $GENOS \
-        --pheno ${OUT_DIR}/phenotype_file.txt \
-        --covar $cov_file \
-        --variance-standardize $quant_covars \
-        --chr $CHR \
-        --from-bp $START_BP \
-        --to-bp $END_BP \
-        --maf $MAF \
-        --glm recessive interaction \
-        --ci 0.95 \
-        --parameters $PARAM \
-        --tests $TESTS \
-        --out ${OUT_DIR}/${feature}
-      fi
+      echo "--bfile $GENOS \\" >> Run_PLINK.sh
+    fi
+    if [[ ! -z "$DOSAGE" ]]; then
+      echo "--vcf $DOSE_FILE dosage=DS \\" >> Run_PLINK.sh
+    fi
+      echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> Run_PLINK.sh
+      echo "--covar ${cov_file} \\" >> Run_PLINK.sh
+      echo "--variance-standardize $quant_covars \\" >> Run_PLINK.sh
+      echo "--chr $CHR \\" >> Run_PLINK.sh
+    if [[ ! -z "$RANGE" ]]; then
+      echo "--from-bp $START_BP \\" >> Run_PLINK.sh
+      echo "--to-bp $END_BP \\" >> Run_PLINK.sh
+    fi
+      echo "--maf $MAF \\" >> Run_PLINK.sh
+    if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
+      echo "--extract-if-info $INFO \\" >> Run_PLINK.sh
+    fi
+      echo "--glm $SNP_PARAM $IXN_PARAM \\" >> Run_PLINK.sh
+      echo "--ci 0.95 \\" >> Run_PLINK.sh
+    if [[ ! -z "$IXN" ]]; then
+      echo "--parameters $PARAM \\" >> Run_PLINK.sh
+    fi
+   if [[ ! -z "$JOINT_TEST" ]]; then
+      echo "--tests $TESTS \\"
+    fi
+    if [[ ! -z "$GENOS" ]]; then
+      echo "--out ${OUT_DIR}/${feature}" >> Run_PLINK.sh
+    fi
+    if [[ ! -z "$DOSAGE" ]]; then
+      echo "--out ${OUT_DIR}/\${1}.${feature}" >> Run_PLINK.sh
+    fi
+    chmod +x Run_PLINK.sh
+  
+    # Run PLINK command
+    if [[ ! -z "$GENOS" ]]; then
+      ./Run_PLINK.sh
       rm ${OUT_DIR}/${feature}.log
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
       assoc_file=$(ls ${OUT_DIR}/${pattern}* | awk -F'/' '{print $NF}')
@@ -1736,142 +1219,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        if [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm \
-          --ci 0.95 \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ -z "$IXN" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm dominant \
-          --ci 0.95 \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ -z "$IXN" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm recessive \
-          --ci 0.95 \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --tests $TESTS \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm dominant interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "DOM" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm dominant interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --tests $TESTS \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm recessive interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        elif [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "REC" ]] && [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
-          plink2 --vcf $DOSE_FILE dosage=DS \
-          --id-delim _ \
-          --pheno ${OUT_DIR}/phenotype_file.txt \
-          --covar $cov_file \
-          --variance-standardize $quant_covars \
-          --chr $CHR \
-          --from-bp $START_BP \
-          --to-bp $END_BP \
-          --maf $MAF \
-          --extract-if-info $INFO \
-          --glm recessive interaction \
-          --ci 0.95 \
-          --parameters $PARAM \
-          --tests $TESTS \
-          --out ${OUT_DIR}/${OUT_FILE}.${feature}
-        fi
+        ./Run_PLINK.sh $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
@@ -1884,6 +1232,7 @@ if [[ ! -z $SWAP ]]; then
     echo "GWAS for ${feature} done"
   done
 fi
+
 echo " "
 echo "PLINK run complete."
 echo " "
