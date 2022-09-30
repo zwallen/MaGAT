@@ -1073,6 +1073,9 @@ if [[ -z $SWAP ]]; then
         quant_covars=$(echo "$quant_covars $i")
       fi
     done
+    echo " - Following variables were detected as quantitative and will be standardized in analysis:"
+    echo "  $quant_covars"
+    echo " "
   fi
   
   # Build PLINK command to run
@@ -1173,7 +1176,7 @@ if [[ ! -z $SWAP ]]; then
       echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--vcf $DOSE_FILE dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
       echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
       echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
@@ -1200,7 +1203,7 @@ if [[ ! -z $SWAP ]]; then
       echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--out ${OUT_DIR}/\${1}.${feature}" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--out ${OUT_DIR}/\${2}.${feature}" >> ${OUT_DIR}/Run_PLINK.sh
     fi
     chmod +x ${OUT_DIR}/Run_PLINK.sh
   
@@ -1219,7 +1222,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        ./${OUT_DIR}/Run_PLINK.sh $OUT_FILE
+        ./${OUT_DIR}/Run_PLINK.sh $DOSE_FILE $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
