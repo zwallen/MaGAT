@@ -790,7 +790,7 @@ if [[ ! -z "$FEAT" ]]; then
   else
     echo "ps.t <- prune_taxa(target.feat, ps.t)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   fi
-    echo "cat('\n','Subsetted data for requested feature ${FEAT}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "cat('\n','Summary after subsetting data for requested feature(s):', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
     echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
@@ -1082,6 +1082,7 @@ if [[ -z $SWAP ]]; then
   fi
   if [[ ! -z "$DOSAGE" ]]; then
     echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK.sh
   fi
     echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
   if [[ ! -z "$VARS" ]]; then
@@ -1173,6 +1174,7 @@ if [[ ! -z $SWAP ]]; then
     fi
     if [[ ! -z "$DOSAGE" ]]; then
       echo "--vcf $DOSE_FILE dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK.sh
     fi
       echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
       echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK.sh
