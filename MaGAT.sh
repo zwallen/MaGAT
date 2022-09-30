@@ -872,7 +872,7 @@ if [[ -z "$VARS" ]]; then
   echo "- No additional variables requested to be included in analysis. Linear models will only include the SNP variable as predictor"
   echo " "
 else
-  echo "- Additional variables to be included in analysis: $VARS"
+  echo "- Additional variables to be included in analysis: $(echo $VARS | sed 's/,/ /g')"
   echo " "
   echo "# Check to make sure additional variables provided are in sample data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "vars <- strsplit('${VARS}', ',')[[1]]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
