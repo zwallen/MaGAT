@@ -1060,6 +1060,12 @@ if [[ ! -z "$JOINT_TEST" ]]; then
   fi
 fi
 
+#### BEGIN PLINK ANALYSIS ####
+
+echo " "
+echo "Begin running PLINK commands..."
+echo " "
+
 # Run GWAS with microbiome data as phenotype
 if [[ -z $SWAP ]]; then
 
@@ -1245,6 +1251,8 @@ fi
 echo " "
 echo "PLINK run complete."
 echo " "
+
+#### END PLINK ANALYSES ####
 
 # Remove results for covariates if specified
 if [[ ! -z $REM_COV ]]; then
