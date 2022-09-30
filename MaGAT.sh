@@ -917,7 +917,7 @@ echo "cat('\n', 'Pre-processing of phyloseq data, and creation of phenotype/cova
 # Run Pre-Process_Phyloseq_Data.R script to perform the data pre-processing and generation of phenotype and covariate file for PLINK
 echo "*** Performing phyloseq data pre-processing ***"
 Rscript ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-exit 0
+
 # If parameter given to make a covariate as phenotype, create new phenotype/covariate files with covariate as phenotype and add microbiome features as covariates
 if [[ ! -z "$SWAP" ]]; then
   echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='')" > ${OUT_DIR}/Swap_phenotype.R
@@ -1056,6 +1056,19 @@ fi
 
 # Run GWAS in PLINK
 if [[ -z $SWAP ]]; then
+  if [[ ! -z $VARS ]]; then
+    covars=$(sed -n 1p ${OUT_DIR}/covariate_file.txt | cut -f 3-)
+    for i in $covars;
+    do
+      levels=$(cat ${OUT_DIR}/covariate_file.txt | \
+      awk -v COVAR="$i" \
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} NR>1 {print $(f[COVAR])}' | \
+      sort | uniq | wc -l)
+      if [[ "$levels" -gt 2 ]]; then
+        quant_covars=$(echo "$quant_covars $i")
+      fi
+    done
+  fi
   if [[ ! -z "$GENOS" ]]; then
     if [[ -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
       plink2 --bfile $GENOS \
@@ -1160,6 +1173,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1171,6 +1185,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1182,6 +1197,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1193,6 +1209,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1205,6 +1222,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1218,6 +1236,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1230,6 +1249,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1243,6 +1263,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1255,6 +1276,7 @@ if [[ -z $SWAP ]]; then
       plink2 --bfile $GENOS \
       --pheno ${OUT_DIR}/phenotype_file.txt \
       --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
       --chr $CHR \
       --from-bp $START_BP \
       --to-bp $END_BP \
@@ -1411,6 +1433,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1424,6 +1447,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1437,6 +1461,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1450,6 +1475,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1464,6 +1490,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1479,6 +1506,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1493,6 +1521,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+      --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1508,6 +1537,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1522,6 +1552,7 @@ if [[ -z $SWAP ]]; then
         --id-delim _ \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar ${OUT_DIR}/covariate_file.txt \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1563,11 +1594,23 @@ if [[ ! -z $SWAP ]]; then
   for cov_file in ${OUT_DIR}/*cov_file_tEmPoRaRy*
   do
     feature=$(echo $cov_file | awk -F'_cov_file_tEmPoRaRy' '{print $1}' | awk -F'/' '{print $NF}')
+    covars=$(sed -n 1p $cov_file | cut -f 3-)
+    for i in $covars;
+    do
+      levels=$(cat $cov_file | \
+      awk -v COVAR="$i" \
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} NR>1 {print $(f[COVAR])}' | \
+      sort | uniq | wc -l)
+      if [[ "$levels" -gt 2 ]]; then
+        quant_covars=$(echo "$quant_covars $i")
+      fi
+    done
     if [[ ! -z "$GENOS" ]]; then
       if [[ ! -z "$VARS" ]] && [[ "$SNP_MOD" = "ADD" ]] && [[ -z "$IXN" ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1579,6 +1622,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1590,6 +1634,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1601,6 +1646,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1613,6 +1659,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1626,6 +1673,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1638,6 +1686,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1651,6 +1700,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1663,6 +1713,7 @@ if [[ ! -z $SWAP ]]; then
         plink2 --bfile $GENOS \
         --pheno ${OUT_DIR}/phenotype_file.txt \
         --covar $cov_file \
+        --variance-standardize $quant_covars \
         --chr $CHR \
         --from-bp $START_BP \
         --to-bp $END_BP \
@@ -1690,6 +1741,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1703,6 +1755,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1716,6 +1769,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1729,6 +1783,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1743,6 +1798,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1758,6 +1814,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1772,6 +1829,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1787,6 +1845,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
@@ -1801,6 +1860,7 @@ if [[ ! -z $SWAP ]]; then
           --id-delim _ \
           --pheno ${OUT_DIR}/phenotype_file.txt \
           --covar $cov_file \
+          --variance-standardize $quant_covars \
           --chr $CHR \
           --from-bp $START_BP \
           --to-bp $END_BP \
