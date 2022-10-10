@@ -4,7 +4,7 @@ set -e
 ####################################################################
 # Microbiome and Genetics Analysis Tool (MaGAT)                    #
 # by Zachary D Wallen                                              #
-# Last updated: 8 June 2021                                        #
+# Last updated: 9 Oct 2022                                         #
 #                                                                  #
 # Description: This is a program that wraps different R packages   #
 # and PLINK 2 to perform association analyses between microbial    #
@@ -156,7 +156,7 @@ echo " "
 echo "####################################################################"
 echo "# Microbiome and Genetics Analysis Tool (MaGAT)                    #"
 echo "# by Zachary D Wallen                                              #"
-echo "# Last updated: 8 June 2021                                        #"
+echo "# Last updated: 9 Oct 2022                                         #"
 echo "####################################################################"
 echo " "
 
