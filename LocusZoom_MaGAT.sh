@@ -152,9 +152,14 @@ if [[ "$TYPE" == "MaGAT" ]]; then
   echo "Formatting results for file $IN_FILE..."
   echo " "
   if [[ $IN_FILE =~ ".gz" ]]; then
-    zcat $IN_FILE | awk -v VAR="$VAR" 'NR == 1 || $7 == VAR{print $1,$2,$3,$4,$5,$9,$10,$14}' OFS='\t' | gzip > ${OUT_FILE}.gz
+    zcat $IN_FILE | \
+    awk -v VAR="$VAR" \
+      'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==VAR)' OFS='\t' | \
+    gzip > ${OUT_FILE}.gz
   else
-    awk -v VAR="$VAR" 'NR == 1 || $7 == VAR{print $1,$2,$3,$4,$5,$9,$10,$14}' OFS='\t' $IN_FILE | gzip > ${OUT_FILE}.gz
+    awk -v VAR="$VAR" \
+      'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==VAR)' OFS='\t' | \
+    gzip > ${OUT_FILE}.gz
   fi
 elif [[ "$TYPE" == "Meta_MaGAT" ]]; then
   echo "*** Formatted LocusZoom file will contain results for $MODEL meta-analysis ***"
