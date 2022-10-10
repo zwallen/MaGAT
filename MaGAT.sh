@@ -757,7 +757,7 @@ if [[ ! -z "$KEEP_SAMPS" ]]; then
   echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps <- filter_taxa(prune_samples(samp.list[,1], ps), function(x){sum(x>0)>0}, TRUE)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Summary after removing samples not found int ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "cat('\n','Summary after removing samples not found in ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
   echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
 fi
