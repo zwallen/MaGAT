@@ -158,10 +158,10 @@ set -e
 #     -r    (Optional) Remove results for covariates. By default,  #
 #           covariates are not removed from PLINK output files, but#
 #           applying this flag will remove them from outputs.      #
-#     -R    (Optional) Keep R scripts generated during pre-        #
-#           processing of data and plot creation. Might be useful  #
-#           to keep for record, or for debugging. If this flag is  #
-#           absent, all R scripts are removed at end of analysis.  #
+#     -R    (Optional) Keep helper R and shell scripts generated   #
+#           during processing of data. Might be useful to keep for #
+#           records or debugging. If this flag is absent, all      #
+#           helper scripts are removed at end of analysis.         #
 ####################################################################
 
 echo " "
@@ -284,7 +284,7 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:P:c:b:s:x:jprR" opt; do
     echo "           variable name in the results.                          "
     echo "     -a    (Optional) The minor allele frequency treshold that    "
     echo "           SNPs must pass in order to be included in the analysis."
-    echo "           Default is 0.01.                                       "
+    echo "           Default is 0.1.                                        "
     echo "     -q    (Optional) Filter SNPs based on an INFO key contained  "
     echo "           in VCF file (e.g. imputation quality score R2). Input  "
     echo "           to this parameter must be in the following form:       "
@@ -328,10 +328,10 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:P:c:b:s:x:jprR" opt; do
     echo "     -r    (Optional) Remove results for covariates. By default,  "
     echo "           covariates are not removed from PLINK output files, but"
     echo "           applying this flag will remove them from outputs.      "
-    echo "     -R    (Optional) Keep R scripts generated during pre-        "
-    echo "           processing of data and plot creation. Might be useful  "
-    echo "           to keep for record, or for debugging. If this flag is  "
-    echo "           absent, all R scripts are removed at end of analysis.  "
+    echo "     -R    (Optional) Keep helper R and shell scripts generated   "
+    echo "           during processing of data. Might be useful to keep for "
+    echo "           records or debugging. If this flag is absent, all      "
+    echo "           helper scripts are removed at end of analysis.         "
     echo " "
     exit 0
     ;;
