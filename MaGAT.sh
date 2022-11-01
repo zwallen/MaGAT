@@ -4,11 +4,16 @@ set -e
 ####################################################################
 # Microbiome and Genetics Analysis Tool (MaGAT)                    #
 # by Zachary D Wallen                                              #
-# Last updated: 9 Oct 2022                                         #
+# Last updated: 1 Nov 2022                                         #
 #                                                                  #
-# Description: This is a program that wraps different R packages   #
-# and PLINK 2 to perform association analyses between microbial    #
-# feature count data and genome-wide genotypes.                    #
+# Description: This is a program that performs association         #
+# analyses between microbial feature count data and genome-wide    #
+# genotypes with and without adjustment for covariates.            #
+#                                                                  #
+# Program requirements:                                            #
+#    - R base                                                      #
+#    - Phyloseq R package                                          #
+#    - PLINK v 2                                                   #
 #                                                                  #
 # Input data consists of the following:                            #
 #                                                                  #
@@ -41,7 +46,7 @@ set -e
 # only include VCF files in the directory that contain these SNPs, #
 # else script will fail.                                           #
 #                                                                  #
-# Usage: ./MaGAT.sh -i phyloseq_object.rds \                      #
+# Usage: ./MaGAT.sh -i phyloseq_object.rds \                       #
 #                    -g genotype_file_prefix OR -d vcf_directory \ #
 #                    -o output_dir \                               #
 #                    [additional options]                          #
@@ -107,18 +112,9 @@ set -e
 #           predictor variables in the GWAS model. Microbial       #
 #           features will be referred to as 'FEATURE' for the      #
 #           variable name in the results.                          #
-#     -c    (Optional) Chromosomes to be included in the           #
-#           analysis. Default is to include all autosomes          #
-#           (chr 1-22). Input chromosomes as comma-separated       #
-#           list and/or ranges with no spaces (e.g. 1-4,22,23,25). #
-#     -b    (Optional) Base pair range of SNPs to be included in   #
-#           the analysis. Only applicable when '-c' is a single    #
-#           chromosome. Should be in the format START-END where    #
-#           START is the first base pair position and END is the   #
-#           last base pair position. All SNPs included by default. #
 #     -a    (Optional) The minor allele frequency treshold that    #
 #           SNPs must pass in order to be included in the analysis.#
-#           Default is 0.01.                                       #
+#           Default is 0.1.                                        #
 #     -q    (Optional) Filter SNPs based on an INFO key contained  #
 #           in VCF file (e.g. imputation quality score R2). Input  #
 #           to this parameter must be in the following form:       #
@@ -128,6 +124,22 @@ set -e
 #           specifying a directory of VCF files as input with the  #
 #           -d parameter. All SNPs that do not satisfy the criteria#
 #           will be removed from analysis.                         #
+#     -P    (Optional) Calculate genetic principal components (PCs)#
+#           to be used as covariates in the statistical model.     #
+#           PCs will be generated using SNPs that survive filtering#
+#           specified with parameters -a and -q. PCs that have a   #
+#           variance explanation % higher than 2 standard          #
+#           deviations from the mean of the first 20 PCs will be   #
+#           used as covariates.                                    #
+#     -c    (Optional) Chromosomes to be included in the           #
+#           analysis. Default is to include all autosomes          #
+#           (chr 1-22). Input chromosomes as comma-separated       #
+#           list and/or ranges with no spaces (e.g. 1-4,22,23,25). #
+#     -b    (Optional) Base pair range of SNPs to be included in   #
+#           the analysis. Only applicable when '-c' is a single    #
+#           chromosome. Should be in the format START-END where    #
+#           START is the first base pair position and END is the   #
+#           last base pair position. All SNPs included by default. #
 #     -s    (Optional) How should SNP genotypes be coded in the    #
 #           model, additive (ADD), dominant (DOM), recessive (REC).#
 #           Specify one of: ADD (default), DOM, REC.               #
@@ -156,17 +168,22 @@ echo " "
 echo "####################################################################"
 echo "# Microbiome and Genetics Analysis Tool (MaGAT)                    #"
 echo "# by Zachary D Wallen                                              #"
-echo "# Last updated: 9 Oct 2022                                         #"
+echo "# Last updated: 1 Nov 2022                                         #"
 echo "####################################################################"
 echo " "
 
 # Argument parsing
-while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
+while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:P:c:b:s:x:jprR" opt; do
   case $opt in
     h)
-    echo " Description: This is a program that wraps different R packages   "
-    echo " and PLINK 2 to perform association analyses between microbial    "
-    echo " feature count data and genome-wide genotypes.                    "
+    echo " Description: This is a program that performs association         "
+    echo " analyses between microbial feature count data and genome-wide    "
+    echo " genotypes with and without adjustment for covariates.            "
+    echo "                                                                  "
+    echo " Program requirements:                                            "
+    echo "    - R base                                                      "
+    echo "    - Phyloseq R package                                          "
+    echo "    - PLINK v 2                                                   "
     echo "                                                                  "
     echo " Input data consists of the following:                            "
     echo "                                                                  "
@@ -265,15 +282,6 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
     echo "           predictor variables in the GWAS model. Microbial       "
     echo "           features will be referred to as 'FEATURE' for the      "
     echo "           variable name in the results.                          "
-    echo "     -c    (Optional) Chromosomes to be included in the           "
-    echo "           analysis. Default is to include all autosomes          "
-    echo "           (chr 1-22). Input chromosomes as comma-separated       "
-    echo "           list and/or ranges with no spaces (e.g. 1-4,22,23,25). "
-    echo "     -b    (Optional) Base pair range of SNPs to be included in   "
-    echo "           the analysis. Only applicable when '-c' is a single    "
-    echo "           chromosome. Should be in the format START-END where    "
-    echo "           START is the first base pair position and END is the   "
-    echo "           last base pair position. All SNPs included by default. "
     echo "     -a    (Optional) The minor allele frequency treshold that    "
     echo "           SNPs must pass in order to be included in the analysis."
     echo "           Default is 0.01.                                       "
@@ -286,6 +294,22 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
     echo "           specifying a directory of VCF files as input with the  "
     echo "           -d parameter. All SNPs that do not satisfy the criteria"
     echo "           will be removed from analysis.                         "
+    echo "     -P    (Optional) Calculate genetic principal components (PCs)"
+    echo "           to be used as covariates in the statistical model.     "
+    echo "           PCs will be generated using SNPs that survive filtering"
+    echo "           specified with parameters -a and -q. PCs that have a   "
+    echo "           variance explanation % higher than 2 standard          "
+    echo "           deviations from the mean of the first 20 PCs will be   "
+    echo "           used as covariates.                                    "
+    echo "     -c    (Optional) Chromosomes to be included in the           "
+    echo "           analysis. Default is to include all autosomes          "
+    echo "           (chr 1-22). Input chromosomes as comma-separated       "
+    echo "           list and/or ranges with no spaces (e.g. 1-4,22,23,25). "
+    echo "     -b    (Optional) Base pair range of SNPs to be included in   "
+    echo "           the analysis. Only applicable when '-c' is a single    "
+    echo "           chromosome. Should be in the format START-END where    "
+    echo "           START is the first base pair position and END is the   "
+    echo "           last base pair position. All SNPs included by default. "
     echo "     -s    (Optional) How should SNP genotypes be coded in the    "
     echo "           model, additive (ADD), dominant (DOM), recessive (REC)."
     echo "           Specify one of: ADD (default), DOM, REC.               "
@@ -335,13 +359,15 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
     ;;
     e) SWAP="$OPTARG"
     ;;
-    c) CHR="$OPTARG"
-    ;;
-    b) RANGE="$OPTARG"
-    ;;
     a) MAF="$OPTARG"
     ;;
     q) INFO="$OPTARG"
+    ;;
+    P) PCA=1
+    ;;
+    c) CHR="$OPTARG"
+    ;;
+    b) RANGE="$OPTARG"
     ;;
     s) SNP_MOD="$OPTARG"
     ;;
@@ -362,7 +388,7 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:c:b:a:q:s:x:jprR" opt; do
   esac
 done
 
-# Check that valid arguments were entered
+# Check that valid arguments were entered, and set defaults where needed
 
 # -i
 if [[ -z "$PHYLO_OBJ" ]]; then
@@ -489,8 +515,38 @@ if [[ ! -z "$SWAP" ]]; then
   fi
 fi
 
+# -a
+if [[ ! -z "$MAF" ]]; then
+  if [[ $(echo "$MAF <= 0.5" | bc) -eq 1 ]]; then
+    :
+  else
+    echo "ERROR: Invalid value given to -f, should be between 0 and 0.5"
+    exit 1
+  fi
+  if [[ $(echo "$MAF >= 0" | bc) -eq 1 ]]; then
+    :
+  else
+    echo "ERROR: Invalid value given to -f, should be between 0 and 0.5"
+    exit 1
+  fi
+fi
+if [[ -z "$MAF" ]]; then
+  MAF=0.01
+fi
+
+# -q
+if [[ ! -z "$INFO" ]]; then
+  if [[ -z "$DOSAGE" ]]; then
+    echo "ERROR: -q parameter only valid when a directory of VCF files is specified as input using the -d parameter"
+    exit 1
+  fi
+fi
+
 # -c
 # Not an easy way to double-check this so let PLINK give the error if its invalid
+if [[ -z "$CHR" ]]; then
+  CHR=1-22
+fi
 
 # -b
 if [[ ! -z "$RANGE" ]]; then
@@ -511,30 +567,8 @@ if [[ ! -z "$RANGE" ]]; then
     echo "ERROR: START and END base pair positions for the base pair position range should be separated by a '-' with no spaces"
     exit 1
   fi
-fi
-
-# -a
-if [[ ! -z "$MAF" ]]; then
-  if [[ $(echo "$MAF <= 0.5" | bc) -eq 1 ]]; then
-    :
-  else
-    echo "ERROR: Invalid value given to -f, should be between 0 and 0.5"
-    exit 1
-  fi
-  if [[ $(echo "$MAF >= 0" | bc) -eq 1 ]]; then
-    :
-  else
-    echo "ERROR: Invalid value given to -f, should be between 0 and 0.5"
-    exit 1
-  fi
-fi
-
-# -q
-if [[ ! -z "$INFO" ]]; then
-  if [[ -z "$DOSAGE" ]]; then
-    echo "ERROR: -q parameter only valid when a directory of VCF files is specified as input using the -d parameter"
-    exit 1
-  fi
+  START_BP=$(echo $RANGE | awk -F"-" '{print $1}')
+  END_BP=$(echo $RANGE | awk -F"-" '{print $2}')
 fi
 
 # -s
@@ -546,6 +580,9 @@ if [[ ! -z "$SNP_MOD" ]]; then
     echo "ERROR: Invalid argument given to -s, please specify one of: ADD, DOM, REC"
     exit 1
   fi
+fi
+if [[ -z "$SNP_MOD" ]]; then
+  SNP_MOD=ADD
 fi
 
 # -x
@@ -591,20 +628,20 @@ echo "*** Parameters for phyloseq data pre-processing ***"
 echo " "
 
 # Initiate R script for data pre-processing
-echo "### Pre-processing of phyloseq data ###" > ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "suppressMessages(library(phyloseq))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Read in phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "ps <- readRDS('${PHYLO_OBJ}')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Make sure phyloseq object is in sample x feature orientation" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "if (taxa_are_rows(ps)){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "    ps <- phyloseq(t(otu_table(ps)), sample_data(ps), tax_table(ps))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "cat('\n','Summary of input phyloseq object:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "### Pre-processing of phyloseq data ###" > ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "suppressMessages(library(phyloseq))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Read in phyloseq object" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "ps <- readRDS('${PHYLO_OBJ}')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Make sure phyloseq object is in sample x feature orientation" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "if (taxa_are_rows(ps)){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "    ps <- phyloseq(t(otu_table(ps)), sample_data(ps), tax_table(ps))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "cat('\n','Summary of input phyloseq object:','\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "ps" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 
 # Add syntax for collapsing taxa to desired taxonomic level
 if [[ -z "$TAXA_LVL" ]]; then
@@ -613,189 +650,192 @@ if [[ -z "$TAXA_LVL" ]]; then
 else
   echo "- Taxa level for analysis: $TAXA_LVL"
   echo " "
-  echo "# Collapse phyloseq object to ${TAXA_LVL} level" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps <- tax_glom(ps, taxrank = '${TAXA_LVL}', NArm=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Summary after collapsing phyloseq object to ${TAXA_LVL} level:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Collapse phyloseq object to ${TAXA_LVL} level" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps <- tax_glom(ps, taxrank = '${TAXA_LVL}', NArm=F)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "cat('\n','Summary after collapsing phyloseq object to ${TAXA_LVL} level:','\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Add syntax to replace taxa_names() with more meaningful labels if phyloseq object was collapsed
 if [[ ! -z "$TAXA_LVL" ]]; then
   if [[ "$TAXA_LVL" == "Species" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:7])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 7){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('s__',taxonomy.sub[7],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 6){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('g__',taxonomy.sub[6],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:7])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 7){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('s__',taxonomy.sub[7],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 6){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('g__',taxonomy.sub[6],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Genus" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:6])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 6){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('g__',taxonomy.sub[6],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:6])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 6){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('g__',taxonomy.sub[6],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Family" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:5])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:5])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 5){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('f__',taxonomy.sub[5],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Order" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:4])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:4])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 4){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('o__',taxonomy.sub[4],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Class" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:3])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:3])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 3){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('c__',taxonomy.sub[3],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Phylum" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:2])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1:2])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('p__',taxonomy.sub[2],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],'_unclass',sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   elif [[ "$TAXA_LVL" == "Kingdom" ]]; then
-    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],sep='')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }else{" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Replace current labels with shorter taxonomy names" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "for (i in 1:length(taxa_names(ps))){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  taxonomy <- as.vector(tax_table(ps)[i, 1])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo '  taxonomy.sub <- taxonomy[!is.na(taxonomy)]' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  if (length(taxonomy.sub) == 1){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- paste('k__',taxonomy.sub[1],sep='')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }else{" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "    taxa_names(ps)[i] <- 'unclassified'" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   fi
 fi
 
 # Add syntax to extract certain samples if requested
 if [[ ! -z "$KEEP_SAMPS" ]]; then
-  echo "# Extract specific samples to use in pre-processing and analysis" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps <- filter_taxa(prune_samples(samp.list[,1], ps), function(x){sum(x>0)>0}, TRUE)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Summary after removing samples not found in ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Extract specific samples to use in pre-processing and analysis" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "samp.list <- read.table('$KEEP_SAMPS')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps <- prune_samples(samp.list[,1], ps)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps <- filter_taxa(prune_samples(samp.list[,1], ps), function(x){sum(x>0)>0}, TRUE)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "cat('\n','Summary after removing samples not found in ${KEEP_SAMPS} file:','\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Add syntax for feature data transformation
 echo "- Transformation for feature count data: ${TRANSF}"
 echo " "
-echo "# Perform normalization/transformation on feature count data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "# Perform normalization/transformation on feature count data" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 if [[ "$TRANSF" = "CLR" ]]; then
-  echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)-mean(log(x+1))})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)-mean(log(x+1))})" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 elif [[ "$TRANSF" = "log_TSS" ]]; then
-  echo "log.trans <- function(x) {" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "  y <- replace(x, x == 0, min(x[x>0]) / 2)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "  return(log(y))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- transform_sample_counts(ps, function(x){x/sum(x)})" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "otu_table(ps.t) <- otu_table(apply(otu_table(ps.t), 2, log.trans), taxa_are_rows=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "log.trans <- function(x) {" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "  y <- replace(x, x == 0, min(x[x>0]) / 2)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "  return(log(y))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps.t <- transform_sample_counts(ps, function(x){x/sum(x)})" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "otu_table(ps.t) <- otu_table(apply(otu_table(ps.t), 2, log.trans), taxa_are_rows=F)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 elif [[ "$TRANSF" = "none" ]]; then
-  echo "ps.t <- ps" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "ps.t <- ps" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+else
+  echo "ps.t <- transform_sample_counts(ps, function(x){log(x+1)-mean(log(x+1))})" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Add syntax for subsetting phyloseq object for specific feature specified by user
 if [[ ! -z "$FEAT" ]]; then
   echo "- Subsetting microbiome data for specific feature: $FEAT"
   echo " "
-  echo "# Subset microbiome data for specified feature: $FEAT" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "target.feat <- strsplit('${FEAT}', ',')[[1]]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Subset microbiome data for specified feature: $FEAT" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "target.feat <- strsplit('${FEAT}', ',')[[1]]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   if [[ ! -z "$TAXA_LVL" ]]; then
-    echo "ps.t <- subset_taxa(ps.t, ${TAXA_LVL} %in% target.feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "ps.t <- subset_taxa(ps.t, ${TAXA_LVL} %in% target.feat)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   else
-    echo "ps.t <- prune_taxa(target.feat, ps.t)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "ps.t <- prune_taxa(target.feat, ps.t)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   fi
-    echo "cat('\n','Summary after subsetting data for requested feature(s):', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "cat('\n','Summary after subsetting data for requested feature(s):', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "ps.t" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Add syntax for filtering microbiome count data
@@ -804,22 +844,22 @@ if [[ ! -z "$FEAT" ]]; then
 elif [[ ! -z "$FILTER" ]]; then
   echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
   echo " "
-  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps.t" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 else
   FILTER=0.1
   echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
   echo " "
-  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "ps.t" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Add syntax for removing unclassified taxa
@@ -829,11 +869,11 @@ if [[ ! -z "$TAXA_LVL" ]]; then
   elif [[ ! -z "$UNCLASS" ]]; then
     echo "- Removing unclassified features at the $TAXA_LVL level"
     echo " "
-    echo "# Remove unclassifed taxa at the ${TAXA_LVL}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "ps.t <- subset_taxa(ps.t, "'!'"is.na(${TAXA_LVL}))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "cat('\n','Summary after removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo "ps.t" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-    echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+    echo "# Remove unclassifed taxa at the ${TAXA_LVL}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "ps.t <- subset_taxa(ps.t, "'!'"is.na(${TAXA_LVL}))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "cat('\n','Summary after removing unclassified taxa at the ${TAXA_LVL} level:', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo "ps.t" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+    echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
   else
     echo "- Keeping unclassified features at the $TAXA_LVL level in the analysis"
     echo " "
@@ -842,33 +882,33 @@ fi
 
 # Add syntax to create microbiome phenotype file for input to PLINK
 if [[ ! -z "$GENOS" ]]; then
-  echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file <- read.table('${GENOS}.fam', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "fam.file <- read.table('${GENOS}.fam', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 elif [[ ! -z "$DOSAGE" ]]; then
-  echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "fam.file <- read.table('${FAM_FILE}', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Read in PLINK fam file" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "fam.file <- read.table('${FAM_FILE}', comment.char='', stringsAsFactors=F)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
-echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "fam.file.filt <- fam.file[fam.file[,2] %in% rownames(feat.df),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "feat.df.filt <- feat.df[rownames(feat.df) %in% fam.file[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "if (nrow(feat.df.filt) == 0){ stop('No overlapping samples found between microbiome and genotype data. Are sample names of phyloseq object and IIDs of genotype data concordant?')}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "cat('\n','Number of samples that overlap between phyloseq and genotype data and will be included in phenotype/covariate files:', nrow(feat.df.filt), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Order microbiome and genotype samples the same so the correct FID and IIDs are added to the microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "feat.df.filt <- feat.df.filt[order(rownames(feat.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "cat('\n','Number of samples found in genotype files:', nrow(fam.file), '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Extract microbiome data from phyloseq object" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "feat.df <- data.frame(otu_table(ps.t))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "cat('\n','Number of samples found in microbiome data:', nrow(feat.df), '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "fam.file.filt <- fam.file[fam.file[,2] %in% rownames(feat.df),]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "feat.df.filt <- feat.df[rownames(feat.df) %in% fam.file[,2],,drop=F]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "if (nrow(feat.df.filt) == 0){ stop('No overlapping samples found between microbiome and genotype data. Are sample names of phyloseq object and IIDs of genotype data concordant?')}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "cat('\n','Number of samples that overlap between phyloseq and genotype data and will be included in phenotype/covariate files:', nrow(feat.df.filt), '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Order microbiome and genotype samples the same so the correct FID and IIDs are added to the microbiome phenotype file" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "feat.df.filt <- feat.df.filt[order(rownames(feat.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "fam.file.filt <- fam.file.filt[order(fam.file.filt[,2]),]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo 'if (!identical(rownames(feat.df.filt), fam.file.filt[,2])){ stop("Sample IDs between microbiome and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "# Create microbiome phenotype file" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "pheno.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], feat.df.filt)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo "write.table(pheno.file, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 
 # Add syntax to create covariate file with requested variables
 if [[ -z "$VARS" ]]; then
@@ -877,61 +917,62 @@ if [[ -z "$VARS" ]]; then
 else
   echo "- Additional variables to be included in analysis: $(echo $VARS | sed 's/,/ /g')"
   echo " "
-  echo "# Check to make sure additional variables provided are in sample data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "vars <- strsplit('${VARS}', ',')[[1]]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!sum(vars %in% colnames(sample_data(ps.t))) == length(vars)){ stop("Additional variables provided to be included in model were not all found in the phyloseq object sample data.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Extract desired variables from phyloseq object sample data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "samp.df <- data.frame(sample_data(ps.t)[,vars])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "cat('\n','Additional variables requested were found in phyloseq object sample data and will be included in covariate file:', colnames(samp.df), '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "samp.df.filt <- samp.df[rownames(samp.df) %in% fam.file.filt[,2],,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Order sample data the same as genotype data so the correct FID and IIDs are added to the covariate file" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "samp.df.filt <- samp.df.filt[order(rownames(samp.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo 'if (!identical(rownames(samp.df.filt), fam.file.filt[,2])){ stop("Sample IDs between sample data and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Create covariate file with additional variables to be included in models" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "covar.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], samp.df.filt)" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "# Dummy-code any categorical variables so PLINK works correctly" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "for (i in 3:ncol(covar.file)){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo '  if (!is.numeric(covar.file[,i]) | length(table(covar.file[,i]))<=2){' >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    cat('\n','WARNING: While creating covariate file for PLINK, variable [',colnames(covar.file)[i],'] was detected as being categorical. It will be dummy-coded to 2 and 1 for analysis. Please check covariate_file.txt to ensure this was done correctly.','\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    levels <- names(table(covar.file[,i]))" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    if (length(levels) == 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      covar.file[,i] <- gsub(levels[1], '2', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      covar.file[,i] <- gsub(levels[2], '1', covar.file[,i])" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    }else if (length(levels) > 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      stop('Variable [',colnames(covar.file)[i],'] was detected as a categorical variable with >2 levels. Automatic dummy-coding of categorical variables with >2 levels is unsupported at this time. Please recode the variables to numeric values manually and try again.')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    }else if (length(levels) < 2){" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "      stop('Please check variable [',colnames(covar.file)[i],']. It was detected as categorical with <2 levels. PLINK will not perform correctly if given a variable with only 1 level.')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "    }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "  }" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "}" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo "write.table(covar.file, '${OUT_DIR}/covariate_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
-  echo " " >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+  echo "# Check to make sure additional variables provided are in sample data" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "vars <- strsplit('${VARS}', ',')[[1]]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo 'if (!sum(vars %in% colnames(sample_data(ps.t))) == length(vars)){ stop("Additional variables provided to be included in model were not all found in the phyloseq object sample data.")}' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "# Extract desired variables from phyloseq object sample data" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "samp.df <- data.frame(sample_data(ps.t)[,vars])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "cat('\n','Additional variables requested were found in phyloseq object sample data and will be included in covariate file:', colnames(samp.df), '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "# Find overlapping samples between microbome and genotype data" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "samp.df.filt <- samp.df[rownames(samp.df) %in% fam.file.filt[,2],,drop=F]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "# Order sample data the same as genotype data so the correct FID and IIDs are added to the covariate file" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "samp.df.filt <- samp.df.filt[order(rownames(samp.df.filt)),,drop=F]" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo 'if (!identical(rownames(samp.df.filt), fam.file.filt[,2])){ stop("Sample IDs between sample data and genotype data do not match, even after finding overlaps and ordering the same.")}' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "# Create covariate file with additional variables to be included in models" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "covar.file <- data.frame(FID=fam.file.filt[,1], IID=fam.file.filt[,2], samp.df.filt)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "# Dummy-code any categorical variables so PLINK works correctly" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "for (i in 3:ncol(covar.file)){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo '  if (!is.numeric(covar.file[,i]) | length(table(covar.file[,i]))<=2){' >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    cat('\n','WARNING: While creating covariate file for PLINK, variable [',colnames(covar.file)[i],'] was detected as being categorical. It will be dummy-coded to 2 and 1 for analysis. Please check covariate_file.txt to ensure this was done correctly.','\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    levels <- names(table(covar.file[,i]))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    if (length(levels) == 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "      covar.file[,i] <- gsub(levels[1], '2', covar.file[,i])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "      covar.file[,i] <- gsub(levels[2], '1', covar.file[,i])" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    }else if (length(levels) > 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "      stop('Variable [',colnames(covar.file)[i],'] was detected as a categorical variable with >2 levels. Automatic dummy-coding of categorical variables with >2 levels is unsupported at this time. Please recode the variables to numeric values manually and try again.')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    }else if (length(levels) < 2){" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "      stop('Please check variable [',colnames(covar.file)[i],']. It was detected as categorical with <2 levels. PLINK will not perform correctly if given a variable with only 1 level.')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "    }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "  }" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo "write.table(covar.file, '${OUT_DIR}/covariate_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
+  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 fi
 
 # Signal end of pre-processing
-echo "cat('\n', 'Pre-processing of phyloseq data, and creation of phenotype/covariate files complete.', '\n')" >> ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+echo "cat('\n', 'Pre-processing of phyloseq data, and creation of phenotype/covariate files complete.', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 
-# Run Pre-Process_Phyloseq_Data.R script to perform the data pre-processing and generation of phenotype and covariate file for PLINK
+# Run Pre_process_phyloseq_data.R script to perform the data pre-processing and generation of phenotype and covariate file for PLINK
 echo "*** Performing phyloseq data pre-processing ***"
-Rscript ${OUT_DIR}/Pre-Process_Phyloseq_Data.R
+Rscript ${OUT_DIR}/Pre_process_phyloseq_data.R
 
 # If parameter given to make a covariate as phenotype, create new phenotype/covariate files with covariate as phenotype and add microbiome features as covariates
 if [[ ! -z "$SWAP" ]]; then
-  echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='')" > ${OUT_DIR}/Swap_phenotype.R
+  echo "### Swapping out covariate as phenotype ###" > ${OUT_DIR}/Swap_phenotype.R
+  echo "pheno.file <- read.table('${OUT_DIR}/phenotype_file.txt', header=T, stringsAsFactors=F, comment.char='')" >> ${OUT_DIR}/Swap_phenotype.R
   echo "covar.file <- read.table('${OUT_DIR}/covariate_file.txt', header=T, stringsAsFactors=F, comment.char='')" >> ${OUT_DIR}/Swap_phenotype.R
-  echo "if (!identical(pheno.file[,c('FID','IID')], covar.file[,c('FID','IID')])){ stop('ERROR: FID and IID in phenotype_file.txt and covariate_file.txt do not match, cannot make phenotype swap.')}" >> ${OUT_DIR}/Swap_phenotype.R
+  echo 'if (!identical(pheno.file[,c("FID","IID")], covar.file[,c("FID","IID")])){ stop("ERROR: FID and IID in phenotype_file.txt and covariate_file.txt do not match, cannot make phenotype swap.")}' >> ${OUT_DIR}/Swap_phenotype.R
   echo "pheno.file.new <- cbind(pheno.file[,c('FID','IID')], covar.file[,'${SWAP}', drop=F])" >> ${OUT_DIR}/Swap_phenotype.R
   echo "write.table(pheno.file.new, '${OUT_DIR}/phenotype_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Swap_phenotype.R
-  echo "covar.file.new <- cbind(pheno.file, covar.file[,which(!colnames(covar.file) %in% c('FID','IID','${SWAP}'))])" >> ${OUT_DIR}/Swap_phenotype.R
+  echo "covar.file.new <- cbind(pheno.file, covar.file[,which("'!'"colnames(covar.file) %in% c('FID','IID','${SWAP}'))])" >> ${OUT_DIR}/Swap_phenotype.R
   echo "write.table(covar.file.new, '${OUT_DIR}/covariate_file.txt', row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Swap_phenotype.R
   echo "for (i in 3:ncol(pheno.file)){" >> ${OUT_DIR}/Swap_phenotype.R
-  echo "  covar.file.new <- cbind(pheno.file[,c(1,2,i)], covar.file[,which(!colnames(covar.file) %in% c('FID','IID','${SWAP}'))])" >> ${OUT_DIR}/Swap_phenotype.R
+  echo "  covar.file.new <- cbind(pheno.file[,c(1,2,i)], covar.file[,which("'!'"colnames(covar.file) %in% c('FID','IID','${SWAP}'))])" >> ${OUT_DIR}/Swap_phenotype.R
   echo "  colnames(covar.file.new)[3] <- 'FEATURE'" >> ${OUT_DIR}/Swap_phenotype.R
   echo "  write.table(covar.file.new, paste('${OUT_DIR}/',colnames(pheno.file)[i],'_cov_file_tEmPoRaRy.txt',sep=''), row.names=F, quote=F, sep='\t')" >> ${OUT_DIR}/Swap_phenotype.R
   echo "}" >> ${OUT_DIR}/Swap_phenotype.R
@@ -944,6 +985,122 @@ fi
 # Grab phenotypes for use later
 PHENOS=$(awk 'NR == 1{$1=$2=""; print $0}' ${OUT_DIR}/phenotype_file.txt)
 
+# Create list of subjects included in analysis for later
+awk 'NR > 1{print $1,$2}' covariate_file.txt > tEmPoRaRy.samp_list.txt
+
+############# END PRE-PROCESS OF PHYLOSEQ DATA #############
+
+############# START PCA #############
+
+if [[ ! -z "$PCA" ]]; then
+  echo " "
+  echo "*** Calculating genetic PCs to use as covariates in analysis ***"
+  echo " "
+  
+  # Build PLINK commands to run LD pruning
+  echo "### LD prune SNPs for PCA ###" > ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "# Prune for independent SNPs (1st pass)" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  if [[ ! -z "$GENOS" ]]; then
+    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  if [[ ! -z "$DOSAGE" ]]; then
+    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
+    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  echo "--indep-pairwise 50 5 0.2 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--out ${OUT_DIR}/ld_prune_1" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo " " >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  if [[ ! -z "$GENOS" ]]; then
+    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  if [[ ! -z "$DOSAGE" ]]; then
+    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--extract ld_prune_1.prune.in \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--make-pgen \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--out ${OUT_DIR}/ld_prune_1" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo " " >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "# Prune for independent SNPs (2nd pass)" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "plink2 --pfile ${OUT_DIR}/ld_prune_1 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--indep-pairwise 138 5 0.2 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--out ${OUT_DIR}/ld_prune_2" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo " " >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "plink2 --pfile ${OUT_DIR}/ld_prune_1 \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--extract ${OUT_DIR}/ld_prune_2.prune.in \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--make-pgen \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  if [[ ! -z "$GENOS" ]]; then
+    echo "--out ${OUT_DIR}/ld_prune_2" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  if [[ ! -z "$DOSAGE" ]]; then
+    echo "--out ${OUT_DIR}/ld_prune_2.\${2}" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  fi
+  chmod +x ${OUT_DIR}/Run_PLINK_LD_prune.sh 
+  
+  # Run PLINK LD pruning and PCA
+  echo " "
+  echo "Begin running PLINK commands for LD pruning and PCA..."
+  echo " "
+  if [[ ! -z "$GENOS" ]]; then
+    ./Run_PLINK_LD_prune.sh
+    plink2 --pfile ${OUT_DIR}/ld_prune_2 \
+    --pca 20 \
+    --out ${OUT_DIR}/PCs
+  if [[ ! -z "$DOSAGE" ]]; then
+    i=0
+    for DOSE_FILE in ${DOSAGE}/*vcf*
+    do
+      echo " "
+      echo " "
+      i=$(( $i + 1 ))
+      ./Run_PLINK_LD_prune.sh $DOSE_FILE $i
+      if [[ $i -eq 2 ]]; then
+        j=$(( $i - 1 ))
+        plink2 --pfile ${OUT_DIR}/ld_prune_2.${i} \
+        --pmerge ${OUT_DIR}/ld_prune_2.${j} \
+        --make-pgen \
+        --out ${OUT_DIR}/ld_prune_2
+      elif [[ $i -gt 2 ]]; then
+        plink2 --pfile ${OUT_DIR}/ld_prune_2.${i} \
+        --pmerge ${OUT_DIR}/ld_prune_2 \
+        --make-pgen \
+        --out ${OUT_DIR}/ld_prune_2
+      fi
+    done
+    plink2 --pfile ${OUT_DIR}/ld_prune_2 \
+    --pca 20 \
+    --out ${OUT_DIR}/PCs
+  fi
+  rm ${OUT_DIR}/ld_prune*
+
+  # Add PCs with high % variation explained to covariate file
+  echo "### Extract genetic PCs with high % variation explained ###" > ${OUT_DIR}/Add_PCs.R
+  echo "pcs <- read.table('${OUT_DIR}/PCs.eigenvec', header=T, comment.char='')" >> ${OUT_DIR}/Add_PCs.R
+  echo "eigenvals <- read.table('${OUT_DIR}/PCs.eigenval', comment.char='')" >> ${OUT_DIR}/Add_PCs.R
+  echo "eigenvals <- cbind(paste('PC',1:nrow(eigenvals), sep=''), eigenvals)" >> ${OUT_DIR}/Add_PCs.R
+  echo "covars <- read.table('${OUT_DIR}/covariate_file.txt', header=T, comment.char='')" >> ${OUT_DIR}/Add_PCs.R
+  echo "covars <- covars[covars[,2] %in% pcs[,2],]" >> ${OUT_DIR}/Add_PCs.R
+  echo 'if (!identical(covars[order(covars[,2]),2], pcs[order(pcs[,2]),2])){' >> ${OUT_DIR}/Add_PCs.R
+  echo "  stop('IIDs not matching between phenotype file and PC file even after subsetting and sorting')" >> ${OUT_DIR}/Add_PCs.R
+  echo "}else{" >> ${OUT_DIR}/Add_PCs.R
+  echo "  covars <- cbind(covars[order(covars[,2]),], pcs[order(pcs[,2]), c(eigenvals[eigenvals[,2]>mean(eigenvals[,2])+(2*sd(eigenvals[,2])),1]),FALSE])" >> ${OUT_DIR}/Add_PCs.R
+  echo "}" >> ${OUT_DIR}/Add_PCs.R
+  echo "write.table(covars, '${OUT_DIR}/covariate_file.txt', row.names=F, quote=F, sep=' ')" >> ${OUT_DIR}/Add_PCs.R
+  Rscript ${OUT_DIR}/Add_PCs.R
+fi
+
+############# END PCA #############
+
+############# START ASSOCIATION ANALYSIS #############
+
 # Remove any previous results if they exist
 for pheno in $PHENOS
 do
@@ -952,35 +1109,17 @@ do
   fi
 done
 
-############# START ASSOCIATION ANALYSIS #############
-
 echo " "
 echo "*** Performing genome-wide association analyses with each feature ***"
 echo " "
-
-# Apply default chromosome option if one was not supplied
-if [[ -z "$CHR" ]]; then
-  CHR=1-22
-fi
 echo "- Running analysis for chromosomes $CHR"
 echo " "
-
-# Get start and end base pair positions
 if [[ ! -z "$RANGE" ]]; then
   echo "- Running analysis for base pair range $RANGE"
   echo " "
-  START_BP=$(echo $RANGE | awk -F"-" '{print $1}')
-  END_BP=$(echo $RANGE | awk -F"-" '{print $2}')
-fi
-
-# Apply default MAF threshold option if one was not supplied
-if [[ -z "$MAF" ]]; then
-  MAF=0.01
 fi
 echo "- MAF threshold SNPs must pass to be included in analysis is $MAF"
 echo " "
-
-# State what info field is being filtered by if given
 if [[ ! -z "$INFO" ]]; then
   echo "- SNPs with $INFO will be included in the analysis"
   echo " "
@@ -1005,11 +1144,6 @@ if [[ ! -z "$IXN" ]]; then
     echo "- Adding interaction term between SNP and $IXN in the linear models"
     echo " "
   fi
-fi
-
-# Apply default SNP model option if one was not supplied
-if [[ -z "$SNP_MOD" ]]; then
-  SNP_MOD=ADD
 fi
 
 # Get PLINK parameter for SNP model
@@ -1063,7 +1197,7 @@ fi
 #### BEGIN PLINK ANALYSIS ####
 
 echo " "
-echo "Begin running PLINK commands..."
+echo "Begin running PLINK commands for GWAS..."
 echo " "
 
 # Run GWAS with microbiome data as phenotype
@@ -1088,47 +1222,48 @@ if [[ -z $SWAP ]]; then
   fi
   
   # Build PLINK command to run
-    echo "plink2 \\" > ${OUT_DIR}/Run_PLINK.sh
+  echo "### Run PLINK GWAS ###" > ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   if [[ ! -z "$GENOS" ]]; then
-    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
-    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
-    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
+  echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   if [[ ! -z "$VARS" ]]; then
-    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
-    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
-    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK.sh
+  echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   if [[ ! -z "$RANGE" ]]; then
-    echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
-    echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
-    echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK.sh
+  echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
-    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
-    echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK.sh
+  echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   if [[ ! -z "$IXN" ]]; then
-    echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
   if [[ ! -z "$JOINT_TEST" ]]; then
     echo "--tests $TESTS \\"
   fi
   if [[ ! -z "$GENOS" ]]; then
-    echo "--out ${OUT_DIR}/" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--out ${OUT_DIR}/" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--out ${OUT_DIR}/\${2}" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--out ${OUT_DIR}/\${2}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
   fi
-  chmod +x ${OUT_DIR}/Run_PLINK.sh
+  chmod +x ${OUT_DIR}/Run_PLINK_GWAS.sh
   
   # Run PLINK command
   if [[ ! -z "$GENOS" ]]; then
-    ./${OUT_DIR}/Run_PLINK.sh
+    ./${OUT_DIR}/Run_PLINK_GWAS.sh
     for pheno in $PHENOS
     do
       assoc_file=$(ls ${OUT_DIR}/${pheno}.glm* | awk -F'/' '{print $NF}')
@@ -1143,7 +1278,7 @@ if [[ -z $SWAP ]]; then
       echo " "
       echo " "
       OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-      ./${OUT_DIR}/Run_PLINK.sh $DOSE_FILE $OUT_FILE
+      ./${OUT_DIR}/Run_PLINK_GWAS.sh $DOSE_FILE $OUT_FILE
       rm ${OUT_DIR}/${OUT_FILE}.log
     done
     echo " "
@@ -1183,45 +1318,46 @@ if [[ ! -z $SWAP ]]; then
     echo " "
 
     # Build PLINK command to run
-      echo "plink2 \\" > ${OUT_DIR}/Run_PLINK.sh
+    echo "### Run PLINK GWAS ###" > ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     if [[ ! -z "$GENOS" ]]; then
-      echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
-      echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     if [[ ! -z "$RANGE" ]]; then
-      echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
-      echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-      echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
-      echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
-      echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK.sh
+    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     if [[ ! -z "$IXN" ]]; then
-      echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
-   if [[ ! -z "$JOINT_TEST" ]]; then
-      echo "--tests $TESTS \\"
+    if [[ ! -z "$JOINT_TEST" ]]; then
+      echo "--tests $TESTS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
     if [[ ! -z "$GENOS" ]]; then
-      echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--out ${OUT_DIR}/\${2}.${feature}" >> ${OUT_DIR}/Run_PLINK.sh
+      echo "--out ${OUT_DIR}/\${2}.${feature}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
     fi
-    chmod +x ${OUT_DIR}/Run_PLINK.sh
+    chmod +x ${OUT_DIR}/Run_PLINK_GWAS.sh
   
     # Run PLINK command
     if [[ ! -z "$GENOS" ]]; then
-      ./${OUT_DIR}/Run_PLINK.sh
+      ./${OUT_DIR}/Run_PLINK_GWAS.sh
       rm ${OUT_DIR}/${feature}.log
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
       assoc_file=$(ls ${OUT_DIR}/${pattern}* | awk -F'/' '{print $NF}')
@@ -1234,7 +1370,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        ./${OUT_DIR}/Run_PLINK.sh $DOSE_FILE $OUT_FILE
+        ./${OUT_DIR}/Run_PLINK_GWAS.sh $DOSE_FILE $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
@@ -1299,14 +1435,16 @@ else
   echo " "
 fi
 
-# Clean up Rscripts
+# Clean up helper scripts
 if [[ -z "$KEEP_R" ]]; then
   rm ${OUT_DIR}/*.R
+  rm ${OUT_DIR}/*.sh
 elif [[ ! -z "$KEEP_R" ]]; then
-  if [[ ! -d "${OUT_DIR}/helper_R_scripts" ]]; then
-    mkdir ${OUT_DIR}/helper_R_scripts
+  if [[ ! -d "${OUT_DIR}/Helper_scripts" ]]; then
+    mkdir ${OUT_DIR}/Helper_scripts
   fi
-  mv ${OUT_DIR}/*.R ${OUT_DIR}/helper_R_scripts/
+  mv ${OUT_DIR}/*.R ${OUT_DIR}/Helper_scripts/
+  mv ${OUT_DIR}/*.sh ${OUT_DIR}/Helper_scripts/
 fi
 
 # Gzip files
