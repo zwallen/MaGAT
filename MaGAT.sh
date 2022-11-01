@@ -173,7 +173,7 @@ echo "####################################################################"
 echo " "
 
 # Argument parsing
-while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:P:c:b:s:x:jprR" opt; do
+while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:Pc:b:s:x:jprR" opt; do
   case $opt in
     h)
     echo " Description: This is a program that performs association         "
