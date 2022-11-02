@@ -981,10 +981,10 @@ if [[ ! -z "$SWAP" ]]; then
   echo "*** Swapping phenotypes, variable ${SWAP} will be used as phenotype while microbiome data will be included as predictors for analyses ***"
   Rscript ${OUT_DIR}/Swap_phenotype.R
 fi
-echo "MADE IT HERE"
+
 # Grab phenotypes for use later
 PHENOS=$(awk 'NR == 1{$1=$2=""; print $0}' ${OUT_DIR}/phenotype_file.txt)
-
+echo "MADE IT HERE"
 # Create list of subjects included in analysis for later
 awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > tEmPoRaRy.samp_list.txt
 
