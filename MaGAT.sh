@@ -1050,7 +1050,7 @@ if [[ ! -z "$PCA" ]]; then
   echo "Begin running PLINK commands for LD pruning and PCA..."
   echo " "
   if [[ ! -z "$GENOS" ]]; then
-    ./Run_PLINK_LD_prune.sh
+    ${OUT_DIR}/Run_PLINK_LD_prune.sh
     plink2 --pfile ${OUT_DIR}/ld_prune_2 \
     --pca 20 \
     --out ${OUT_DIR}/PCs
@@ -1062,7 +1062,7 @@ if [[ ! -z "$PCA" ]]; then
       echo " "
       echo " "
       i=$(( $i + 1 ))
-      ./Run_PLINK_LD_prune.sh $DOSE_FILE $i
+      ${OUT_DIR}/Run_PLINK_LD_prune.sh $DOSE_FILE $i
       if [[ $i -eq 2 ]]; then
         j=$(( $i - 1 ))
         plink2 --pfile ${OUT_DIR}/ld_prune_2.${i} \
