@@ -491,6 +491,9 @@ if [[ ! -z "$FILTER" ]]; then
     exit 1
   fi
 fi
+if [[ -z "$FILTER" ]]; then
+  FILTER=0.1
+fi
 
 # -u
 # Not an easy way to double-check this so let phyloseq give the error if its invalid
@@ -531,7 +534,7 @@ if [[ ! -z "$MAF" ]]; then
   fi
 fi
 if [[ -z "$MAF" ]]; then
-  MAF=0.01
+  MAF=0.1
 fi
 
 # -q
@@ -841,17 +844,7 @@ fi
 # Add syntax for filtering microbiome count data
 if [[ ! -z "$FEAT" ]]; then
   :
-elif [[ ! -z "$FILTER" ]]; then
-  echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
-  echo " "
-  echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
-  echo "filt_feat <- taxa_names(filter_taxa(ps, function(x){sum(x > 0) >= (${FILTER}*length(x))}, TRUE))" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
-  echo "ps.t <- subset_taxa(ps.t, taxa_names(ps.t) %in% filt_feat)" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
-  echo "cat('\n','Summary after filtering out features that were detected below minimum proportion of samples equal to ${FILTER}:', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
-  echo "ps.t" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
-  echo " " >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 else
-  FILTER=0.1
   echo "- Proportion of samples feature must be detected in to be included in this analysis: $FILTER"
   echo " "
   echo "# Filter out features that were detected below minimum proportion of samples equal to ${FILTER}" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
