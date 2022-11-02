@@ -1112,7 +1112,7 @@ done
 
 echo " "
 echo " "
-echo "*** Performing genome-wide association analyses with each feature ***"
+echo "*** Performing association analyses with each feature ***"
 echo " "
 echo "- Running analysis for chromosomes $CHR"
 echo " "
@@ -1233,6 +1233,7 @@ if [[ -z $SWAP ]]; then
     echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
+  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$VARS" ]]; then
     echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
@@ -1265,7 +1266,7 @@ if [[ -z $SWAP ]]; then
   
   # Run PLINK command
   if [[ ! -z "$GENOS" ]]; then
-    ./${OUT_DIR}/Run_PLINK_GLM.sh
+    ${OUT_DIR}/Run_PLINK_GLM.sh
     for pheno in $PHENOS
     do
       assoc_file=$(ls ${OUT_DIR}/${pheno}.glm* | awk -F'/' '{print $NF}')
@@ -1280,7 +1281,7 @@ if [[ -z $SWAP ]]; then
       echo " "
       echo " "
       OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-      ./${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
+      ${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
       rm ${OUT_DIR}/${OUT_FILE}.log
     done
     echo " "
@@ -1329,6 +1330,7 @@ if [[ ! -z $SWAP ]]; then
       echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
       echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
+    echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
@@ -1359,7 +1361,7 @@ if [[ ! -z $SWAP ]]; then
   
     # Run PLINK command
     if [[ ! -z "$GENOS" ]]; then
-      ./${OUT_DIR}/Run_PLINK_GLM.sh
+      ${OUT_DIR}/Run_PLINK_GLM.sh
       rm ${OUT_DIR}/${feature}.log
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
       assoc_file=$(ls ${OUT_DIR}/${pattern}* | awk -F'/' '{print $NF}')
@@ -1372,7 +1374,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        ./${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
+        ${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
