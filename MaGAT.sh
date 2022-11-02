@@ -1051,7 +1051,7 @@ if [[ ! -z "$PCA" ]]; then
   if [[ ! -z "$GENOS" ]]; then
     ${OUT_DIR}/Run_PLINK_LD_prune.sh
     plink2 --pfile ${OUT_DIR}/ld_prune_2 \
-    --pca 20 \
+    --pca \
     --out ${OUT_DIR}/PCs
   fi
   if [[ ! -z "$DOSAGE" ]]; then
@@ -1076,7 +1076,7 @@ if [[ ! -z "$PCA" ]]; then
       fi
     done
     plink2 --pfile ${OUT_DIR}/ld_prune_2 \
-    --pca 20 \
+    --pca \
     --out ${OUT_DIR}/PCs
   fi
   rm ${OUT_DIR}/ld_prune*
