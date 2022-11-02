@@ -984,14 +984,14 @@ fi
 
 # Grab phenotypes for use later
 PHENOS=$(awk 'NR == 1{$1=$2=""; print $0}' ${OUT_DIR}/phenotype_file.txt)
-echo "MADE IT HERE"
+
 # Create list of subjects included in analysis for later
-awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > tEmPoRaRy.samp_list.txt
+awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > ${OUT_DIR}/tEmPoRaRy.samp_list.txt
 
 ############# END PRE-PROCESS OF PHYLOSEQ DATA #############
 
 ############# START PCA #############
-
+echo "MADE IT HERE"
 if [[ ! -z "$PCA" ]]; then
   echo " "
   echo "*** Calculating genetic PCs to use as covariates in analysis ***"
