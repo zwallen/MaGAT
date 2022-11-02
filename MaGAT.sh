@@ -615,6 +615,7 @@ fi
 # If directory with VCF files given, make temporary .fam file to use for phenotype and covariate file creation
 if [[ ! -z "$DOSAGE" ]]; then
   echo " "
+  echo " "
   echo "*** VCF files given instead of PLINK binary files, making temporary .fam file from smallest sized VCF file in supplied directory to use in downstream processes ***"
   echo " "
   if ls $OUT_DIR | grep -q "tEmPoRaRy"; then
@@ -626,6 +627,7 @@ if [[ ! -z "$DOSAGE" ]]; then
 fi
 
 ############# START PRE-PROCESS OF PHYLOSEQ DATA #############
+echo " "
 echo " "
 echo "*** Parameters for phyloseq data pre-processing ***"
 echo " "
@@ -951,6 +953,8 @@ fi
 echo "cat('\n', 'Pre-processing of phyloseq data, and creation of phenotype/covariate files complete.', '\n')" >> ${OUT_DIR}/Pre_process_phyloseq_data.R
 
 # Run Pre_process_phyloseq_data.R script to perform the data pre-processing and generation of phenotype and covariate file for PLINK
+echo " "
+echo " "
 echo "*** Performing phyloseq data pre-processing ***"
 Rscript ${OUT_DIR}/Pre_process_phyloseq_data.R
 
@@ -971,6 +975,7 @@ if [[ ! -z "$SWAP" ]]; then
   echo "}" >> ${OUT_DIR}/Swap_phenotype.R
   
   echo " "
+  echo " "
   echo "*** Swapping phenotypes, variable ${SWAP} will be used as phenotype while microbiome data will be included as predictors for analyses ***"
   Rscript ${OUT_DIR}/Swap_phenotype.R
 fi
@@ -986,6 +991,7 @@ awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > ${OUT_DIR}/tEmPoRaRy.s
 ############# START PCA #############
 
 if [[ ! -z "$PCA" ]]; then
+  echo " "
   echo " "
   echo "*** Calculating genetic PCs to use as covariates in analysis ***"
   echo " "
@@ -1088,6 +1094,7 @@ if [[ ! -z "$PCA" ]]; then
   echo "  covars <- cbind(covars[order(covars[,2]),], pcs[order(pcs[,2]), c(eigenvals[eigenvals[,2]>mean(eigenvals[,2])+(2*sd(eigenvals[,2])),1]),FALSE])" >> ${OUT_DIR}/Add_PCs.R
   echo "}" >> ${OUT_DIR}/Add_PCs.R
   echo "write.table(covars, '${OUT_DIR}/covariate_file.txt', row.names=F, quote=F, sep=' ')" >> ${OUT_DIR}/Add_PCs.R
+  echo "cat('\n','Genetic PCs that will be included in analysis as covariates:',c(eigenvals[eigenvals[,2]>mean(eigenvals[,2])+(2*sd(eigenvals[,2])),1]),'\n')" >> ${OUT_DIR}/Add_PCs.R
   Rscript ${OUT_DIR}/Add_PCs.R
 fi
 
@@ -1103,6 +1110,7 @@ do
   fi
 done
 
+echo " "
 echo " "
 echo "*** Performing genome-wide association analyses with each feature ***"
 echo " "
