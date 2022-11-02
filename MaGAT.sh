@@ -109,7 +109,7 @@ set -e
 #           specified with the -v parameter. Listing a variable    #
 #           name here will cause that variable to become the       #
 #           phenotype and feature count data to be included as     #
-#           predictor variables in the GWAS model. Microbial       #
+#           predictor variables in the statistical model. Microbial#
 #           features will be referred to as 'FEATURE' for the      #
 #           variable name in the results.                          #
 #     -a    (Optional) The minor allele frequency treshold that    #
@@ -279,7 +279,7 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:Pc:b:s:x:jprR" opt; do
     echo "           specified with the -v parameter. Listing a variable    "
     echo "           name here will cause that variable to become the       "
     echo "           phenotype and feature count data to be included as     "
-    echo "           predictor variables in the GWAS model. Microbial       "
+    echo "           predictor variables in the statistical model. Microbial"
     echo "           features will be referred to as 'FEATURE' for the      "
     echo "           variable name in the results.                          "
     echo "     -a    (Optional) The minor allele frequency treshold that    "
@@ -1196,13 +1196,13 @@ if [[ ! -z "$JOINT_TEST" ]]; then
   fi
 fi
 
-#### BEGIN PLINK ANALYSIS ####
+#### BEGIN PLINK ASSOCIATION ANALYSIS ####
 
 echo " "
-echo "Begin running PLINK commands for GWAS..."
+echo "Begin running PLINK commands for association analysis..."
 echo " "
 
-# Run GWAS with microbiome data as phenotype
+# Run association analysis with microbiome data as phenotype
 if [[ -z $SWAP ]]; then
 
   # If variables supplied, grab names of quantitative one for standardization during analysis
@@ -1224,48 +1224,48 @@ if [[ -z $SWAP ]]; then
   fi
   
   # Build PLINK command to run
-  echo "### Run PLINK GWAS ###" > ${OUT_DIR}/Run_PLINK_GWAS.sh
-  echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "### Run PLINK GLM ###" > ${OUT_DIR}/Run_PLINK_GLM.sh
+  echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$GENOS" ]]; then
-    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$VARS" ]]; then
-    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$RANGE" ]]; then
-    echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-  echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+  echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+  echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$IXN" ]]; then
-    echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
   if [[ ! -z "$JOINT_TEST" ]]; then
     echo "--tests $TESTS \\"
   fi
   if [[ ! -z "$GENOS" ]]; then
-    echo "--out ${OUT_DIR}/" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--out ${OUT_DIR}/" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
   if [[ ! -z "$DOSAGE" ]]; then
-    echo "--out ${OUT_DIR}/\${2}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--out ${OUT_DIR}/\${2}" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  chmod +x ${OUT_DIR}/Run_PLINK_GWAS.sh
+  chmod +x ${OUT_DIR}/Run_PLINK_GLM.sh
   
   # Run PLINK command
   if [[ ! -z "$GENOS" ]]; then
-    ./${OUT_DIR}/Run_PLINK_GWAS.sh
+    ./${OUT_DIR}/Run_PLINK_GLM.sh
     for pheno in $PHENOS
     do
       assoc_file=$(ls ${OUT_DIR}/${pheno}.glm* | awk -F'/' '{print $NF}')
@@ -1280,7 +1280,7 @@ if [[ -z $SWAP ]]; then
       echo " "
       echo " "
       OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-      ./${OUT_DIR}/Run_PLINK_GWAS.sh $DOSE_FILE $OUT_FILE
+      ./${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
       rm ${OUT_DIR}/${OUT_FILE}.log
     done
     echo " "
@@ -1296,7 +1296,7 @@ if [[ -z $SWAP ]]; then
   fi
 fi
 
-# Run GWAS for swapped phenotype if applicable
+# Run association analysis for swapped phenotype if applicable
 if [[ ! -z $SWAP ]]; then
   for cov_file in ${OUT_DIR}/*cov_file_tEmPoRaRy*
   do
@@ -1320,46 +1320,46 @@ if [[ ! -z $SWAP ]]; then
     echo " "
 
     # Build PLINK command to run
-    echo "### Run PLINK GWAS ###" > ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "### Run PLINK GLM ###" > ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "plink2 \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     if [[ ! -z "$GENOS" ]]; then
-      echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--bfile $GENOS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-      echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+      echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
-    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     if [[ ! -z "$RANGE" ]]; then
-      echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-      echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+      echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
-    echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
-      echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
-    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
-    echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+    echo "--glm $SNP_PARAM $IXN_PARAM \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--ci 0.95 \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     if [[ ! -z "$IXN" ]]; then
-      echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--parameters $PARAM \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
     if [[ ! -z "$JOINT_TEST" ]]; then
-      echo "--tests $TESTS \\" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--tests $TESTS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
     if [[ ! -z "$GENOS" ]]; then
-      echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--out ${OUT_DIR}/${feature}" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
     if [[ ! -z "$DOSAGE" ]]; then
-      echo "--out ${OUT_DIR}/\${2}.${feature}" >> ${OUT_DIR}/Run_PLINK_GWAS.sh
+      echo "--out ${OUT_DIR}/\${2}.${feature}" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
-    chmod +x ${OUT_DIR}/Run_PLINK_GWAS.sh
+    chmod +x ${OUT_DIR}/Run_PLINK_GLM.sh
   
     # Run PLINK command
     if [[ ! -z "$GENOS" ]]; then
-      ./${OUT_DIR}/Run_PLINK_GWAS.sh
+      ./${OUT_DIR}/Run_PLINK_GLM.sh
       rm ${OUT_DIR}/${feature}.log
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
       assoc_file=$(ls ${OUT_DIR}/${pattern}* | awk -F'/' '{print $NF}')
@@ -1372,7 +1372,7 @@ if [[ ! -z $SWAP ]]; then
         echo " "
         echo " "
         OUT_FILE=$(echo $DOSE_FILE | awk -F'.vcf' '{print $1}' | awk -F'/' '{print $NF}')
-        ./${OUT_DIR}/Run_PLINK_GWAS.sh $DOSE_FILE $OUT_FILE
+        ./${OUT_DIR}/Run_PLINK_GLM.sh $DOSE_FILE $OUT_FILE
         rm ${OUT_DIR}/${OUT_FILE}.${feature}.log
       done
       pattern=$(echo ${feature}.${PHENOS} | sed 's/ //')
@@ -1382,15 +1382,19 @@ if [[ ! -z $SWAP ]]; then
       mv ${OUT_DIR}/${pattern}.glm.${assoc}.tEmPoRaRy ${OUT_DIR}/${pattern}.glm.${assoc}
     fi
     echo " "
-    echo "GWAS for ${feature} done"
+    echo "Association analysis for ${feature} done"
   done
 fi
 
 echo " "
-echo "PLINK run complete."
+echo "PLINK association analysis runs complete."
 echo " "
 
 #### END PLINK ANALYSES ####
+
+############# END ASSOCIATION ANALYSIS #############
+
+############# START CLEAN UP #############
 
 # Remove results for covariates if specified
 if [[ ! -z $REM_COV ]]; then
@@ -1471,6 +1475,9 @@ done
 # Remove any temporary files
 rm ${OUT_DIR}/*tEmPoRaRy*
 
+############# END CLEAN UP #############
+
+echo " "
 echo " "
 echo "*** Running of MaGAT has completed ***"
 echo " "
