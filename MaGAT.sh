@@ -986,7 +986,7 @@ fi
 PHENOS=$(awk 'NR == 1{$1=$2=""; print $0}' ${OUT_DIR}/phenotype_file.txt)
 
 # Create list of subjects included in analysis for later
-awk 'NR > 1{print $1,$2}' covariate_file.txt > tEmPoRaRy.samp_list.txt
+awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > tEmPoRaRy.samp_list.txt
 
 ############# END PRE-PROCESS OF PHYLOSEQ DATA #############
 
@@ -1435,16 +1435,26 @@ else
   echo " "
 fi
 
+# Clean up files generated during workflow
+if [[ ! -d "${OUT_DIR}/0.MaGAT_generated_files" ]]; then
+  mkdir ${OUT_DIR}/0.MaGAT_generated_files
+fi
+mv ${OUT_DIR}/phenotype_file.txt ${OUT_DIR}/0.MaGAT_generated_files/
+mv ${OUT_DIR}/covariate_file.txt ${OUT_DIR}/0.MaGAT_generated_files/
+if [[ ! -z "$PCA" ]]; then
+  mv ${OUT_DIR}/PCs.* ${OUT_DIR}/0.MaGAT_generated_files/
+fi
+
 # Clean up helper scripts
 if [[ -z "$KEEP_R" ]]; then
   rm ${OUT_DIR}/*.R
   rm ${OUT_DIR}/*.sh
 elif [[ ! -z "$KEEP_R" ]]; then
-  if [[ ! -d "${OUT_DIR}/Helper_scripts" ]]; then
-    mkdir ${OUT_DIR}/Helper_scripts
+  if [[ ! -d "${OUT_DIR}/0.MaGAT_helper_scripts" ]]; then
+    mkdir ${OUT_DIR}/0.MaGAT_helper_scripts
   fi
-  mv ${OUT_DIR}/*.R ${OUT_DIR}/Helper_scripts/
-  mv ${OUT_DIR}/*.sh ${OUT_DIR}/Helper_scripts/
+  mv ${OUT_DIR}/*.R ${OUT_DIR}/0.MaGAT_helper_scripts/
+  mv ${OUT_DIR}/*.sh ${OUT_DIR}/0.MaGAT_helper_scripts/
 fi
 
 # Gzip files
