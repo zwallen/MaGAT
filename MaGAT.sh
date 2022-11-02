@@ -991,7 +991,7 @@ awk 'NR > 1{print $1,$2}' ${OUT_DIR}/covariate_file.txt > ${OUT_DIR}/tEmPoRaRy.s
 ############# END PRE-PROCESS OF PHYLOSEQ DATA #############
 
 ############# START PCA #############
-echo "MADE IT HERE"
+
 if [[ ! -z "$PCA" ]]; then
   echo " "
   echo "*** Calculating genetic PCs to use as covariates in analysis ***"
@@ -1054,6 +1054,7 @@ if [[ ! -z "$PCA" ]]; then
     plink2 --pfile ${OUT_DIR}/ld_prune_2 \
     --pca 20 \
     --out ${OUT_DIR}/PCs
+  fi
   if [[ ! -z "$DOSAGE" ]]; then
     i=0
     for DOSE_FILE in ${DOSAGE}/*vcf*
