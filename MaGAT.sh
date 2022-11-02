@@ -1007,7 +1007,7 @@ if [[ ! -z "$PCA" ]]; then
     echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
     echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   fi
-  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--keep ${OUT_DIR}/tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--maf $MAF \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   if [[ ! -z "$DOSAGE" ]] && [[ ! -z "$INFO" ]]; then
     echo "--extract-if-info $INFO \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
@@ -1023,7 +1023,7 @@ if [[ ! -z "$PCA" ]]; then
     echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
     echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   fi
-  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--keep ${OUT_DIR}/tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--extract ld_prune_1.prune.in \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--make-pgen \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--out ${OUT_DIR}/ld_prune_1" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
@@ -1233,7 +1233,7 @@ if [[ -z $SWAP ]]; then
     echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+  echo "--keep ${OUT_DIR}/tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   if [[ ! -z "$VARS" ]]; then
     echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
@@ -1330,7 +1330,7 @@ if [[ ! -z $SWAP ]]; then
       echo "--vcf \${1} dosage=DS \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
       echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     fi
-    echo "--keep tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    echo "--keep ${OUT_DIR}/tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
