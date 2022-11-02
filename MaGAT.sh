@@ -1024,7 +1024,7 @@ if [[ ! -z "$PCA" ]]; then
     echo "--id-delim _ \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   fi
   echo "--keep ${OUT_DIR}/tEmPoRaRy.samp_list.txt \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
-  echo "--extract ld_prune_1.prune.in \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
+  echo "--extract ${OUT_DIR}/ld_prune_1.prune.in \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--make-pgen \\" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo "--out ${OUT_DIR}/ld_prune_1" >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
   echo " " >> ${OUT_DIR}/Run_PLINK_LD_prune.sh
