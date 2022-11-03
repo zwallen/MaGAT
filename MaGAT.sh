@@ -132,8 +132,8 @@ set -e
 #           deviations from the mean of the first 20 PCs will be   #
 #           used as covariates.                                    #
 #     -c    (Optional) Chromosomes to be included in the           #
-#           analysis. Default is to include all autosomes          #
-#           (chr 1-22). Input chromosomes as comma-separated       #
+#           analysis. Default is to include all chromosomes        #
+#           provided. Input chromosomes as comma-separated         #
 #           list and/or ranges with no spaces (e.g. 1-4,22,23,25). #
 #     -b    (Optional) Base pair range of SNPs to be included in   #
 #           the analysis. Only applicable when '-c' is a single    #
@@ -302,8 +302,8 @@ while getopts ":hi:g:d:o:l:t:p:k:f:uv:e:a:q:Pc:b:s:x:jprR" opt; do
     echo "           deviations from the mean of the first 20 PCs will be   "
     echo "           used as covariates.                                    "
     echo "     -c    (Optional) Chromosomes to be included in the           "
-    echo "           analysis. Default is to include all autosomes          "
-    echo "           (chr 1-22). Input chromosomes as comma-separated       "
+    echo "           analysis. Default is to include all chromosomes        "
+    echo "           provided. Input chromosomes as comma-separated         "
     echo "           list and/or ranges with no spaces (e.g. 1-4,22,23,25). "
     echo "     -b    (Optional) Base pair range of SNPs to be included in   "
     echo "           the analysis. Only applicable when '-c' is a single    "
@@ -547,9 +547,6 @@ fi
 
 # -c
 # Not an easy way to double-check this so let PLINK give the error if its invalid
-if [[ -z "$CHR" ]]; then
-  CHR=1-22
-fi
 
 # -b
 if [[ ! -z "$RANGE" ]]; then
@@ -1114,10 +1111,18 @@ echo " "
 echo " "
 echo "*** Performing association analyses with each feature ***"
 echo " "
-echo "- Running analysis for chromosomes $CHR"
-echo " "
+if [[ ! -z "$CHR" ]]; then
+  echo "- Running analysis for chromosomes $CHR"
+  echo " "
+else
+  echo "- Running analysis for all chromosomes provided"
+  echo " "
+fi
 if [[ ! -z "$RANGE" ]]; then
   echo "- Running analysis for base pair range $RANGE"
+  echo " "
+else
+  echo "- No base pair range provided, will run analysis for all SNP locations"
   echo " "
 fi
 echo "- MAF threshold SNPs must pass to be included in analysis is $MAF"
@@ -1239,7 +1244,9 @@ if [[ -z $SWAP ]]; then
     echo "--covar ${OUT_DIR}/covariate_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
   fi
-  echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+  if [[ ! -z "$CHR" ]]; then
+    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+  fi
   if [[ ! -z "$RANGE" ]]; then
     echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
@@ -1334,7 +1341,9 @@ if [[ ! -z $SWAP ]]; then
     echo "--pheno ${OUT_DIR}/phenotype_file.txt \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--covar ${cov_file} \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
     echo "--variance-standardize $quant_covars \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
-    echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    if [[ ! -z "$CHR" ]]; then
+      echo "--chr $CHR \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
+    fi
     if [[ ! -z "$RANGE" ]]; then
       echo "--from-bp $START_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
       echo "--to-bp $END_BP \\" >> ${OUT_DIR}/Run_PLINK_GLM.sh
