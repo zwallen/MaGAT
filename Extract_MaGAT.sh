@@ -142,14 +142,14 @@ if [[ "$TYPE" == "MaGAT" ]]; then
   for file in ${IN_OUT_DIR}/*.glm.*
   do
     if [[ $file =~ ".gz" ]]; then
-      echo "Extracting results from file ${file}..."
+      echo "Extracting results from file $(echo ${file} | awk -F'/' '{print $NF}')..."
       FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
       zcat $file | \
       awk -v VAR="$VAR" -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || ($(f["TEST"])==VAR && $(f["P"])<P_THRESH))' | \
       sed "2,\$s/$/\t${FEAT_NAME}/" | sed '1s/$/\tFEATURE/' > ${file}.tEmPoRaRy
     else
-      echo "Extracting results from file ${file}..."
+      echo "Extracting results from file $(echo ${file} | awk -F'/' '{print $NF}')..."
       FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm.linear" '{print $1}')
       awk -v VAR="$VAR" -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || ($(f["TEST"])==VAR && $(f["P"])<P_THRESH))' | \
@@ -168,7 +168,7 @@ elif [[ "$TYPE" == "Meta_MaGAT" ]]; then
   echo " "
   for file in ${IN_OUT_DIR}/*glm*meta.gz
   do
-    echo "Extracting results from file ${file}..."
+    echo "Extracting results from file $(echo ${file} | awk -F'/' '{print $NF}')..."
     FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
     if zcat $file | head -n1 | grep -q "Zscore"; then
       zcat $file | \
