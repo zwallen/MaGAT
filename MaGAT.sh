@@ -1411,31 +1411,31 @@ echo " "
 if [[ ! -z $REM_COV ]]; then
   if [[ ! -z "$IXN" ]] && [[ -z "$JOINT_TEST" ]]; then
     echo " "
-    echo "Subsetting PLINK result files for SNP(${SNP_MOD})x${IXN} variable results..."
+    echo "Subsetting PLINK result files for SNP(${SNP_MOD})x${IXN} and main effects results..."
     echo " "
     for pheno in $PHENOS
     do
       FILE=$(ls ${OUT_DIR}/*${pheno}.glm*)
       cat $FILE | \
       awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" \
-        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD"x"IXN)' > ${FILE}.mod
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD || $(f["TEST"])==IXN || $(f["TEST"])==SNP_MOD"x"IXN)' > ${FILE}.mod
       mv ${FILE}.mod $FILE
     done
   elif [[ ! -z "$IXN" ]] && [[ ! -z "$JOINT_TEST" ]]; then
     echo " "
-    echo "Subsetting PLINK result files for 2df joint test results..."
+    echo "Subsetting PLINK result files for 2df joint test, SNP(${SNP_MOD})x${IXN}, and main effects results..."
     echo " "
     for pheno in $PHENOS
     do
       FILE=$(ls ${OUT_DIR}/*${pheno}.glm*)
       cat $FILE | \
       awk -v IXN="$IXN" -v SNP_MOD="$SNP_MOD" \
-        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD || $(f["TEST"])==SNP_MOD"x"IXN || $(f["TEST"])=="USER_2DF")' > ${FILE}.mod
+        'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["TEST"])==SNP_MOD || $(f["TEST"])==IXN || $(f["TEST"])==SNP_MOD"x"IXN || $(f["TEST"])=="USER_2DF")' > ${FILE}.mod
       mv ${FILE}.mod $FILE
     done
   else
     echo " "
-    echo "Subsetting PLINK result files for SNP(${SNP_MOD}) variable results..."
+    echo "Subsetting PLINK result files for SNP(${SNP_MOD}) results..."
     echo " "
     for pheno in $PHENOS
     do
