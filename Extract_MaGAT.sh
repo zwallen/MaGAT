@@ -6,7 +6,7 @@ set -e
 # threshold (e.g. P<5E-8 for genome-wide hits) from PLINK results    #
 # that were outputted after running MaGAT or meta-analysis results   #
 # after running Meta_MaGAT.                                          #
-# Last updated: 12 May 2021                                          #
+# Last updated: 3 Nov 2022                                           #
 #                                                                    #
 # Usage: ./Extract_Results.sh -i directory_containing_results \      #
 #                             -t type_of_results \                   #
@@ -143,17 +143,17 @@ if [[ "$TYPE" == "MaGAT" ]]; then
   do
     if [[ $file =~ ".gz" ]]; then
       echo "Extracting results from file ${file}..."
-      TAXA_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
+      FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
       zcat $file | \
       awk -v VAR="$VAR" -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || ($(f["TEST"])==VAR && $(f["P"])<P_THRESH))' | \
-      sed "s/$/ ${TAXA_NAME}/" > ${file}.tEmPoRaRy
+      sed "2,\$s/$/\t${FEAT_NAME}/" | sed '1s/$/\tFEATURE/' > ${file}.tEmPoRaRy
     else
       echo "Extracting results from file ${file}..."
-      TAXA_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm.linear" '{print $1}')
+      FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm.linear" '{print $1}')
       awk -v VAR="$VAR" -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || ($(f["TEST"])==VAR && $(f["P"])<P_THRESH))' | \
-      sed "s/$/ ${TAXA_NAME}/" > ${file}.tEmPoRaRy
+      sed "2,\$s/$/\t${FEAT_NAME}/" | sed '1s/$/\tFEATURE/' > ${file}.tEmPoRaRy
     fi
   done
   echo " "
@@ -169,17 +169,17 @@ elif [[ "$TYPE" == "Meta_MaGAT" ]]; then
   for file in ${IN_OUT_DIR}/*glm*meta.gz
   do
     echo "Extracting results from file ${file}..."
-    TAXA_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
+    FEAT_NAME=$(echo $file | awk -F"/" '{print $NF}' | awk -F".glm." '{print $1}')
     if zcat $file | head -n1 | grep -q "Zscore"; then
       zcat $file | \
       awk -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || $(f["P-value"])<P_THRESH)' | \
-      sed "s/$/ ${TAXA_NAME}/" > ${file}.tEmPoRaRy
+      sed "2,\$s/$/\t${FEAT_NAME}/" | sed '1s/$/\tFEATURE/' > ${file}.tEmPoRaRy
     else
       zcat $file | \
       awk -v P_THRESH="$P_THRESH" \
         'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}} (NR==1 || ($(f["PVALUE_FE"])<P_THRESH || $(f["PVALUE_RE"])<P_THRESH))' | \
-      sed "s/$/ ${TAXA_NAME}/" > ${file}.tEmPoRaRy
+      sed "2,\$s/$/\t${FEAT_NAME}/" | sed '1s/$/\tFEATURE/' > ${file}.tEmPoRaRy
     fi
   done
   echo " "

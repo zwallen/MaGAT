@@ -4,7 +4,7 @@ set -e
 ####################################################################
 # Microbiome and Genetics Analysis Tool (MaGAT)                    #
 # by Zachary D Wallen                                              #
-# Last updated: 1 Nov 2022                                         #
+# Last updated: 3 Nov 2022                                         #
 #                                                                  #
 # Description: This is a program that performs association         #
 # analyses between microbial feature count data and genome-wide    #
@@ -168,7 +168,7 @@ echo " "
 echo "####################################################################"
 echo "# Microbiome and Genetics Analysis Tool (MaGAT)                    #"
 echo "# by Zachary D Wallen                                              #"
-echo "# Last updated: 1 Nov 2022                                         #"
+echo "# Last updated: 3 Nov 2022                                         #"
 echo "####################################################################"
 echo " "
 
