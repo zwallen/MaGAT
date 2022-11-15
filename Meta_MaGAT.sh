@@ -9,9 +9,8 @@ set -e
 #                                                                    #
 # Usage: ./Meta_MaGAT.sh -i list_of_directories_with_results \       #
 #                         -o output_directory \                      #
-#                         -d directory_of_Metasoft_plink_converter \ #
-#                         -v variable_to_meta_analyze \              #
-#                         -z are_files_gzipped?                      #
+#                         -d directory_of_needed_programs \          #
+#                         -v variable_to_meta_analyze                #
 #                                                                    #
 # Parameters:                                                        #
 #     -h    Print the parameter list below then exit.                #
@@ -24,8 +23,9 @@ set -e
 #           based on 'ID' column in PLINK result file, so make sure  #
 #           SNP IDs are harmonized between datasets.                 #
 #     -o    (Required) Directory to place output.                    #
-#     -d    (Required) Directory that contains the Metasoft java     #
-#           program, and PLINK format converter script.              #
+#     -d    (Required) Path to directory that has the METASOFT java  #
+#           program and related files (PLINK format converter script #
+#           and Han & Eskin Pvalue table file) and the METAL binary. #
 #     -v    (Required) The variable to perform meta-analysis for.    #
 #           Must be valid entry that is found in the 'TEST' column of#
 #           the result files. If USER_2DF variable specified for     #
@@ -37,21 +37,18 @@ set -e
 #           values). When performing meta-analysis on USER_2DF       #
 #           results, direction of effect will be taken from the      #
 #           interaction estimate.                                    #
-#     -z    (Required) Are the PLINK result files gzipped? One of:   #
-#           yes or no.                                               #
 ######################################################################
 
 # Argument parsing
-while getopts ":hi:o:d:v:z:" opt; do
+while getopts ":hi:o:d:v:" opt; do
   case $opt in
     h)
     echo " "
     echo " Usage: ./Meta_MaGAT.sh -i list_of_directories_with_results \       "
     echo "                         -o output_directory \                      "
-    echo "                         -d directory_of_Metasoft_plink_converter \ "
-    echo "                         -v variable_to_meta_analyze \              "
-    echo "                         -z are_files_gzipped?                      "
-    echo "  "
+    echo "                         -d directory_of_needed_programs \          "
+    echo "                         -v variable_to_meta_analyze                "
+    echo "                                                                    "
     echo " Parameters:                                                        "
     echo "     -h    Print the parameter list below then exit.                "
     echo "     -i    (Required) List of directories that contains the PLINK   "
@@ -63,8 +60,9 @@ while getopts ":hi:o:d:v:z:" opt; do
     echo "           based on 'ID' column in PLINK result file, so make sure  "
     echo "           SNP IDs are harmonized between datasets.                 "
     echo "     -o    (Required) Directory to place output.                    "
-    echo "     -d    (Required) Directory that contains the Metasoft java     "
-    echo "           program, and plink format converter script.              "
+    echo "     -d    (Required) Path to directory that has the METASOFT java  "
+    echo "           program and related files (PLINK format converter script "
+    echo "           and Han & Eskin Pvalue table file) and the METAL binary. "
     echo "     -v    (Required) The variable to perform meta-analysis for.    "
     echo "           Must be valid entry that is found in the 'TEST' column of"
     echo "           the result files. If USER_2DF variable specified for     "
@@ -76,8 +74,6 @@ while getopts ":hi:o:d:v:z:" opt; do
     echo "           values). When performing meta-analysis on USER_2DF       "
     echo "           results, direction of effect will be taken from the      "
     echo "           interaction estimate.                                    "
-    echo "     -z    (Required) Are the PLINK result files gzipped? One of:   "
-    echo "           yes or no.                                               "
     echo " "
     exit 0
     ;;
@@ -88,8 +84,6 @@ while getopts ":hi:o:d:v:z:" opt; do
     d) META_DIR=$(echo $OPTARG | sed 's#/$##')
     ;;
     v) VAR="$OPTARG"
-    ;;
-    z) ZIP="$OPTARG"
     ;;
     \?) echo "Invalid option: $OPTARG" 1>&2
         exit 1
@@ -153,25 +147,16 @@ if ls $META_DIR | grep "HanEskinPvalueTable.txt"; then
 else
   echo "ERROR: Expecting file HanEskinPvalueTable.txt to be in directory specified with -d, but not found"
 fi
+if ls $META_DIR | grep "metal"; then
+  :
+else
+  echo "ERROR: Expecting METAL binary called 'metal' to be in directory specified with -d, but not found"
+fi
 
 # -v
 if [[ -z "$VAR" ]]; then
   echo "ERROR: Argument -v is required, please supply a variable to perform meta-analysis for"
   exit 1
-fi
-
-# -z
-if [[ -z "$ZIP" ]]; then
-  echo "ERROR: Argument -z is required, please specify if PLINK result files have been gzipped"
-  exit 1
-else
-  ARG_LIST="yes, no"
-  if echo $ARG_LIST | grep -q "$ZIP"; then
-    :
-  else
-    echo "ERROR: Invalid argument given to -z, please specify one of: yes, no"
-    exit 1
-  fi
 fi
 
 ############# START META-ANALYSIS #############
@@ -224,21 +209,21 @@ do
   echo " "
   echo $IN_DIR | sed 's/,/\n/g' | awk -v line="$line" '$1=$1"/"line' | while read line_2
   do
-    if [[ "$ZIP" == "yes" ]] && [[ "$VAR" == "USER_2DF" ]]; then
+    if [[ $file =~ ".gz" ]] && [[ "$VAR" == "USER_2DF" ]]; then
       snp_check=$(diff <(zcat $line_2 | awk -v VAR="$VAR" 'NR!=1 && $7 == VAR{print $3}') <(zcat $line_2 | grep 'ADDx' | awk '{print $3}'))
       if [[ ! -z "$snp_check" ]]; then
         echo "ERROR: In order to run meta-analysis for USER_2DF, results should be ordered by SNP"
         exit 1
       fi
       zcat $line_2 | awk -v VAR="$VAR" '$7 == VAR{print $1,$2,$3,$4,$5,$6,$7,$8,$10,$11,$12,$13,$14}' OFS="\t" | paste - <(zcat $line_2 | grep 'ADDx' | awk '{print $9}') | sed "1s/^/CHROM\tPOS\tID\tREF\tALT\tA1\tTEST\tOBS_CT\tSE\tL95\tU95\tT_OR_F_STAT\tP\tBETA\n/" > ${line_2}.tEmPoRaRy
-    elif [[ "$ZIP" == "no" ]] && [[ "$VAR" == "USER_2DF" ]]; then
+    elif [[ "$VAR" == "USER_2DF" ]]; then
       snp_check=$(diff <(cat $line_2 | awk -v VAR="$VAR" 'NR!=1 && $7 == VAR{print $3}') <(cat $line_2 | grep 'ADDx' | awk '{print $3}'))
       if [[ ! -z "$snp_check" ]]; then
         echo "ERROR: In order to run meta-analysis for USER_2DF, results should be ordered by SNP"
         exit 1
       fi
       cat $line_2 | awk -v VAR="$VAR" '$7 == VAR{print $1,$2,$3,$4,$5,$6,$7,$8,$10,$11,$12,$13,$14}' OFS="\t" | paste - <(cat $line_2 | grep 'ADDx' | awk '{print $9}') | sed "1s/^/CHROM\tPOS\tID\tREF\tALT\tA1\tTEST\tOBS_CT\tSE\tL95\tU95\tT_OR_F_STAT\tP\tBETA\n/" > ${line_2}.tEmPoRaRy
-    elif [[ "$ZIP" == "yes" ]]; then
+    elif [[ $file =~ ".gz" ]]; then
       zcat $line_2 | awk -v VAR="$VAR" 'NR==1 || $7 == VAR' > ${line_2}.tEmPoRaRy
     else
       cat $line_2 | awk -v VAR="$VAR" 'NR==1 || $7 == VAR' > ${line_2}.tEmPoRaRy
@@ -273,7 +258,7 @@ do
     do
       echo "PROCESS $line_3" >> ${OUT_DIR}/metal_script.txt
     done
-    if [[ "$ZIP" == "yes" ]]; then
+    if [[ $file =~ ".gz" ]]; then
       file_name=$(echo $line | awk -F'.gz' '{print $1}')
     else
       file_name=$(echo $line)
@@ -287,7 +272,7 @@ do
     echo "Running meta-analysis with METAL..."
     echo " "
     
-    metal ${OUT_DIR}/metal_script.txt > ${OUT_DIR}/${file_name}.meta.log
+    ${META_DIR}/metal ${OUT_DIR}/metal_script.txt > ${OUT_DIR}/${file_name}.meta.log
     
     # Filter out results for only one dataset and clean up
     filt=$(( $N_DIR - 1 ))
@@ -310,7 +295,7 @@ do
     echo "Running meta-analysis with METASOFT..."
     echo " "
   
-    if [[ "$ZIP" == "yes" ]]; then
+    if [[ $file =~ ".gz" ]]; then
       file_name=$(echo $line | awk -F'.gz' '{print $1}')
     else
       file_name=$(echo $line)

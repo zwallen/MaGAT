@@ -10,4 +10,4 @@ The only thing that still needs to be done once the conda environment is built i
 ```
 > BiocManager::install('phyloseq')
 ```
-`METASOFT` is the only program that cannot be downloaded via conda, so the .jar program file, the PLINK converter script, and the Han and Eskin P-value table are provided in the `Support_Files` directory, which can be pointed to using a parameter in the `Meta_MaGAT` script.
+`METASOFT` and `METAL` are not available to download via conda, so the most up to date `METASOFT` java file (filename `Metasoft.jar`) and the `METAL` binary for Linux (filename `metal`) are provided in this directory. Two additional files needed to run `METASOFT` (`plink2metasoft_modified.py` and `HanEskinPvalueTable.txt`) are also provided here.
