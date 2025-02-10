@@ -19,6 +19,7 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
   --help)
+    echo "                                                                      "
     echo "            Microbiome and Genetics Analysis Tool (MaGAT)             "
     echo "                          Zachary D Wallen                            "
     echo "                             9 Feb 2025                               "
