@@ -2,22 +2,14 @@
 set -e
 
 ####################################################################
-# Microbiome and Genetics Analysis Tool (MaGAT) v 1.0.0            #
-# by Zachary D Wallen                                              #
-# Last updated: 9 Feb 2025                                         #
+#          Microbiome and Genetics Analysis Tool (MaGAT)           #
+#                        Zachary D Wallen                          #
+#                           9 Feb 2025                             #
 #                                                                  #
 # Description: This is a program that performs association         #
 # analyses between microbial feature count data and genome-wide or #
 # targeted genotypes with and without adjustment for covariates.   #
 ####################################################################
-
-echo " "
-echo "####################################################################"
-echo "# Microbiome and Genetics Analysis Tool (MaGAT) v 1.0.0            #"
-echo "# by Zachary D Wallen                                              #"
-echo "# Last updated: 9 Feb 2025                                         #"
-echo "####################################################################"
-echo " "
 
 # Argument parsing
 while [[ $# -gt 0 ]]; do
@@ -27,6 +19,10 @@ while [[ $# -gt 0 ]]; do
     exit 0
     ;;
   --help)
+    echo "            Microbiome and Genetics Analysis Tool (MaGAT)             "
+    echo "                          Zachary D Wallen                            "
+    echo "                             9 Feb 2025                               "
+    echo "                                                                      "
     echo " Description: This is a program that performs association             "
     echo " analyses between microbial feature count data and genome-wide or     "
     echo " targeted genotypes with and without adjustment for covariates.       "
