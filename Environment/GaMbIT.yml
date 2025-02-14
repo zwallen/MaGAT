@@ -1,4 +1,4 @@
-name: MaGAT
+name: GaMbIT
 channels:
   - biobakery
   - conda-forge

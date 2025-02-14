@@ -3,11 +3,11 @@ set -e
 
 ######################################################################
 # Wrapper program to perform meta-analysis between two (or more)     #
-# datasets analyzed using MaGAT.                                     #
+# datasets analyzed using GaMbIT.                                    #
 # by Zachary D Wallen                                                #
 # Last updated: 8 June 2021                                          #
 #                                                                    #
-# Usage: ./Meta_MaGAT.sh -i list_of_directories_with_results \       #
+# Usage: ./Meta_GaMbIT.sh -i list_of_directories_with_results \      #
 #                         -o output_directory \                      #
 #                         -d directory_of_needed_programs \          #
 #                         -v variable_to_meta_analyze                #
@@ -15,7 +15,7 @@ set -e
 # Parameters:                                                        #
 #     -h    Print the parameter list below then exit.                #
 #     -i    (Required) List of directories that contains the PLINK   #
-#           resuts from running MaGAT. Each directory should contain #
+#           resuts from running GaMbIT. Each directory should contain#
 #           results from different datasets. Should be a comma       #
 #           separated list of directory names, no spaces, no '/'     #
 #           after the directory name. Only files with matching file  #
@@ -44,7 +44,7 @@ while getopts ":hi:o:d:v:" opt; do
   case $opt in
     h)
     echo " "
-    echo " Usage: ./Meta_MaGAT.sh -i list_of_directories_with_results \       "
+    echo " Usage: ./Meta_GaMbIT.sh -i list_of_directories_with_results \      "
     echo "                         -o output_directory \                      "
     echo "                         -d directory_of_needed_programs \          "
     echo "                         -v variable_to_meta_analyze                "
@@ -52,7 +52,7 @@ while getopts ":hi:o:d:v:" opt; do
     echo " Parameters:                                                        "
     echo "     -h    Print the parameter list below then exit.                "
     echo "     -i    (Required) List of directories that contains the PLINK   "
-    echo "           resuts from running MaGAT. Each directory should contain "
+    echo "           resuts from running GaMbIT. Each directory should contain"
     echo "           results from different datasets. Should be a comma       "
     echo "           separated list of directory names, no spaces, no '/'     "
     echo "           after the directory name. Only files with matching file  "
@@ -97,7 +97,7 @@ done
 # Check that valid arguments were entered
 # -i
 if [[ -z "$IN_DIR" ]]; then
-  echo "ERROR: Argument -i is required, please supply a list of directories with PLINK results from running MaGAT"
+  echo "ERROR: Argument -i is required, please supply a list of directories with PLINK results from running GaMbIT"
   exit 1
 fi
 if echo $IN_DIR | grep -q ","; then

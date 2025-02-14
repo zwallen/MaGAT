@@ -4,11 +4,11 @@ set -e
 ######################################################################
 # Helper script to extract association results at a paricular pvalue #
 # threshold (e.g. P<5E-8 for genome-wide hits) and/or SNP ID from    #
-# PLINK results that were outputted after running MaGAT or           #
-# meta-analysis results after running Meta_MaGAT.                    #
+# PLINK results that were outputted after running GaMbIT or          #
+# meta-analysis results after running Meta_GaMbIT.                   #
 # Last updated: 7 Nov 2022                                           #
 #                                                                    #
-# Usage: ./Extract_Results.sh -i directory_containing_results \      #
+# Usage: ./Extract_GaMbIT.sh  -i directory_containing_results \      #
 #                             -t type_of_results \                   #
 #                             -v variable \                          #
 #                             -p pvalue_treshold \                   #
@@ -18,14 +18,14 @@ set -e
 # Parameters:                                                        #
 #     -h    Print the parameter list below then exit.                #
 #     -i    (Required) Directory that contains the PLINK resuts from #
-#           running MaGAT or meta-analysis results from running      #
-#           Meta_MaGAT. The outputted file with extracted results    #
+#           running GaMbIT or meta-analysis results from running     #
+#           Meta_GaMbIT. The outputted file with extracted results   #
 #           will be placed in this directory as well.                #
 #     -t    (Required) The type of results being submitted to the    #
-#           script. One of: MaGAT or Meta_MaGAT.                     #
+#           script. One of: GaMbIT or Meta_GaMbIT.                   #
 #     -v    (Required) The variable to extract results for. Must be  #
 #           valid entry that is found in the 'TEST' column of the    #
-#           result files. Only used when -t is MaGAT, will be        #
+#           result files. Only used when -t is GaMbIT, will be       #
 #           ignored otherwise.                                       #
 #   One of the following required:                                   #
 #     -p    (Required) The Pvalue threshold used for extracting      #
@@ -42,7 +42,7 @@ while getopts ":hi:t:v:p:s:" opt; do
   case $opt in
     h)
     echo " "
-    echo " Usage: ./Extract_Results.sh -i directory_containing_results \      "
+    echo " Usage: ./Extract_GaMbIT.sh  -i directory_containing_results \      "
     echo "                             -t type_of_results \                   "
     echo "                             -v variable \                          "
     echo "                             -p pvalue_treshold \                   "
@@ -52,14 +52,14 @@ while getopts ":hi:t:v:p:s:" opt; do
     echo " Parameters:                                                        "
     echo "     -h    Print the parameter list below then exit.                "
     echo "     -i    (Required) Directory that contains the PLINK resuts from "
-    echo "           running MaGAT or meta-analysis results from running      "
-    echo "           Meta_MaGAT. The outputted file with extracted results    "
+    echo "           running GaMbIT or meta-analysis results from running     "
+    echo "           Meta_GaMbIT. The outputted file with extracted results   "
     echo "           will be placed in this directory as well.                "
     echo "     -t    (Required) The type of results being submitted to the    "
-    echo "           script. One of: MaGAT or Meta_MaGAT.                     "
+    echo "           script. One of: GaMbIT or Meta_GaMbIT.                   "
     echo "     -v    (Required) The variable to extract results for. Must be  "
     echo "           valid entry that is found in the 'TEST' column of the    "
-    echo "           result files. Only used when -t is MaGAT, will be        "
+    echo "           result files. Only used when -t is GaMbIT, will be       "
     echo "           ignored otherwise.                                       "
     echo "   One of the following required:                                   "
     echo "     -p    (Required) The Pvalue threshold used for extracting      "
@@ -94,30 +94,30 @@ done
 # Check that valid arguments were entered
 # -i
 if [[ -z "$IN_OUT_DIR" ]]; then
-  echo "Argument -i is required, please supply a directory with PLINK results from running MaGAT."
+  echo "Argument -i is required, please supply a directory with PLINK results from running GaMbIT."
   exit 1
 fi
 if [[ ! -d "$IN_OUT_DIR" ]]; then
-  echo "Argument -i should be a directory, please supply a directory with PLINK results from running MaGAT."
+  echo "Argument -i should be a directory, please supply a directory with PLINK results from running GaMbIT."
   exit 1
 fi
 
 # -t
 if [[ ! -z "$TYPE" ]]; then
-  ARG_LIST="MaGAT Meta_MaGAT"
+  ARG_LIST="GaMbIT Meta_GaMbIT"
   if echo $ARG_LIST | grep -q "$TYPE"; then
     :
   else
-    echo "Invalid argument given to -t, please specify one of: MaGAT or Meta_MaGAT"
+    echo "Invalid argument given to -t, please specify one of: GaMbIT or Meta_GaMbIT"
     exit 1
   fi
 elif [[ -z "$TYPE" ]]; then
-  echo "Argument -t is required, please specify if results being given to script are from running MaGAT or Meta_MaGAT"
+  echo "Argument -t is required, please specify if results being given to script are from running GaMbIT or Meta_GaMbIT"
   exit 1
 fi
 
 # -v
-if [[ "$TYPE" == "MaGAT" ]]; then
+if [[ "$TYPE" == "GaMbIT" ]]; then
   if [[ -z "$VAR" ]]; then
     echo "Argument -v is required, please supply a variable to extract results for."
     exit 1
@@ -167,8 +167,8 @@ if [[ ! -z "$SNP_ID" ]]; then
   echo " "
 fi
 
-if [[ "$TYPE" == "MaGAT" ]]; then
-  echo "*** Input result files are specified as MaGAT output ***"
+if [[ "$TYPE" == "GaMbIT" ]]; then
+  echo "*** Input result files are specified as GaMbIT output ***"
   echo " "
   for file in ${IN_OUT_DIR}/*.glm.*
   do
@@ -199,8 +199,8 @@ if [[ "$TYPE" == "MaGAT" ]]; then
   echo " "
   pcol=$(awk 'NR==1{for(i=1;i<=NF;i++){if($i=="P"){print i;exit}}}' $(ls ${IN_OUT_DIR}/*.tEmPoRaRy | sed -n 1p))
   cat ${IN_OUT_DIR}/*.tEmPoRaRy | sort -g -k"$pcol" -u > ${IN_OUT_DIR}/Extracted_Results.txt
-elif [[ "$TYPE" == "Meta_MaGAT" ]]; then
-  echo "*** Input result files are specified as Meta_MaGAT output ***"
+elif [[ "$TYPE" == "Meta_GaMbIT" ]]; then
+  echo "*** Input result files are specified as Meta_GaMbIT output ***"
   echo " "
   for file in ${IN_OUT_DIR}/*glm*meta.gz
   do

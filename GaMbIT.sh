@@ -2,7 +2,7 @@
 set -e
 
 ####################################################################
-#          Microbiome and Genetics Analysis Tool (MaGAT)           #
+#        Genetics and Microbiome Integration Tool (GaMbIT)         #
 #                        Zachary D Wallen                          #
 #                           9 Feb 2025                             #
 #                                                                  #
@@ -15,12 +15,12 @@ set -e
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --version)
-    echo "MaGAT v 1.0.0"
+    echo "GaMbIT v 1.0.0"
     exit 0
     ;;
   --help)
     echo "                                                                      "
-    echo "            Microbiome and Genetics Analysis Tool (MaGAT)             "
+    echo "          Genetics and Microbiome Integration Tool (GaMbIT)           "
     echo "                          Zachary D Wallen                            "
     echo "                             9 Feb 2025                               "
     echo "                                                                      "
@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
     echo " sample names of the input phyloseq object matches the IID portion    "
     echo " of the VCF ID.                                                       "
     echo "                                                                      "
-    echo " Usage: ./MaGAT.sh --phyloseq-object phyloseq_object.rds \            "
+    echo " Usage: ./GaMbIT.sh --phyloseq-object phyloseq_object.rds \           "
     echo "                    --genotype-file-prefix genotype_file_prefix OR    "
     echo "                    --vcf-directory vcf_directory \                   "
     echo "                    --output-dir output_dir \                         "
@@ -1354,13 +1354,13 @@ else
 fi
 
 # Clean up files generated during workflow
-if [[ ! -d "${OUT_DIR}/0.MaGAT_generated_files" ]]; then
-  mkdir ${OUT_DIR}/0.MaGAT_generated_files
+if [[ ! -d "${OUT_DIR}/0.GaMbIT_generated_files" ]]; then
+  mkdir ${OUT_DIR}/0.GaMbIT_generated_files
 fi
-mv ${OUT_DIR}/phenotype_file.txt ${OUT_DIR}/0.MaGAT_generated_files/
-mv ${OUT_DIR}/covariate_file.txt ${OUT_DIR}/0.MaGAT_generated_files/
+mv ${OUT_DIR}/phenotype_file.txt ${OUT_DIR}/0.GaMbIT_generated_files/
+mv ${OUT_DIR}/covariate_file.txt ${OUT_DIR}/0.GaMbIT_generated_files/
 if [[ ! -z "$PCA" ]]; then
-  mv ${OUT_DIR}/PCs.* ${OUT_DIR}/0.MaGAT_generated_files/
+  mv ${OUT_DIR}/PCs.* ${OUT_DIR}/0.GaMbIT_generated_files/
 fi
 
 # Clean up helper scripts
@@ -1368,11 +1368,11 @@ if [[ -z "$KEEP_R" ]]; then
   rm ${OUT_DIR}/*.R
   rm ${OUT_DIR}/*.sh
 elif [[ ! -z "$KEEP_R" ]]; then
-  if [[ ! -d "${OUT_DIR}/0.MaGAT_helper_scripts" ]]; then
-    mkdir ${OUT_DIR}/0.MaGAT_helper_scripts
+  if [[ ! -d "${OUT_DIR}/0.GaMbIT_helper_scripts" ]]; then
+    mkdir ${OUT_DIR}/0.GaMbIT_helper_scripts
   fi
-  mv ${OUT_DIR}/*.R ${OUT_DIR}/0.MaGAT_helper_scripts/
-  mv ${OUT_DIR}/*.sh ${OUT_DIR}/0.MaGAT_helper_scripts/
+  mv ${OUT_DIR}/*.R ${OUT_DIR}/0.GaMbIT_helper_scripts/
+  mv ${OUT_DIR}/*.sh ${OUT_DIR}/0.GaMbIT_helper_scripts/
 fi
 
 # Gzip files
@@ -1390,5 +1390,5 @@ rm ${OUT_DIR}/*tEmPoRaRy*
 
 echo " "
 echo " "
-echo "*** Running of MaGAT has completed ***"
+echo "*** Running of GaMbIT has completed ***"
 echo " "
